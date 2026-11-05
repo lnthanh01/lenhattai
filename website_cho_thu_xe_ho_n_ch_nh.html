@@ -1,0 +1,2813 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VCAR RENTAL - Hệ Thống Cho Thuê Xe Tự Lái & Có Tài Xế</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS & JS for Interactive Mini Depot Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        /* Wireframe mode toggle styling to inspect exact wireframe borders */
+        body.wireframe-mode .wf-box {
+            border: 3px solid #000000 !important;
+            box-shadow: none !important;
+        }
+        body.wireframe-mode .wf-card-home {
+            border: 3px solid #000000 !important;
+            border-radius: 28px !important;
+        }
+        body.wireframe-mode .wf-card-list {
+            border: 3px solid #000000 !important;
+            border-radius: 2px !important;
+        }
+        /* Smooth transitions */
+        .page-section {
+            display: none;
+            animation: fadeIn 0.25s ease-in-out;
+        }
+        .page-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Leaflet map z-index fix */
+        #depot-mini-map {
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- TOP UTILITY BAR (Chuyển đổi chế độ xem & Quản lý đơn đặt xe) -->
+    <div class="bg-slate-900 text-slate-200 text-xs py-2 px-4 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-4">
+                <span><i class="fa-solid fa-phone-volume text-emerald-400 mr-1.5"></i>Hotline 24/7: <strong>1900 8866</strong></span>
+                <span class="hidden sm:inline"><i class="fa-solid fa-folder-open text-amber-400 mr-1.5"></i>Nguồn ảnh: <code class="bg-slate-800 px-1.5 py-0.5 rounded text-amber-300">asset/image/</code></span>
+                <button onclick="openAssetGuideModal()" class="text-sky-400 hover:text-sky-300 underline font-medium">
+                    <i class="fa-solid fa-circle-info mr-1"></i>Xem danh sách file ảnh trong asset/image
+                </button>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="toggleWireframeMode()" id="wf-toggle-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded border border-slate-600 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-border-all text-amber-400"></i>
+                    <span>Viền Bản Vẽ: Tắt</span>
+                </button>
+                <button onclick="navigateTo('checkout')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded font-semibold transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span>Trang Thanh Toán</span>
+                    <span id="header-booking-count" class="bg-white text-emerald-800 px-1.5 rounded-full text-[10px] font-bold">1</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- HEADER CHUẨN THEO BẢN THIẾT KẾ (LOGO WEB | KHUNG TÌM KIẾM XE | LOGIN) -->
+    <!-- =================================================================== -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur shadow-sm border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 pt-3 pb-3">
+            
+            <!-- HÀNG 1: LOGO WEB | KHUNG TÌM KIẾM XE | LOGIN -->
+            <div class="grid grid-cols-12 gap-2 sm:gap-4 items-stretch mb-3">
+                
+                <!-- 1. LOGO WEB -->
+                <div onclick="navigateTo('home')" class="col-span-4 sm:col-span-3 lg:col-span-2 wf-box border-2 border-slate-800 rounded-lg bg-white hover:bg-slate-50 transition cursor-pointer flex items-center justify-center p-2.5 select-none">
+                    <div class="flex items-center gap-2">
+                        <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-lg shadow-sm">
+                            <i class="fa-solid fa-car-side"></i>
+                        </div>
+                        <div class="leading-tight">
+                            <span class="block font-extrabold text-sm sm:text-base tracking-tight text-slate-900">VCAR WEB</span>
+                            <span class="block text-[10px] font-semibold text-blue-600 uppercase tracking-wider">Cho Thuê Xe</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. KHUNG TÌM KIẾM XE -->
+                <div class="col-span-5 sm:col-span-6 lg:col-span-8 wf-box border-2 border-slate-800 rounded-lg bg-white flex items-center px-2 sm:px-4 py-1.5 relative">
+                    <i class="fa-solid fa-magnifying-glass text-slate-400 mr-2 sm:mr-3 text-sm sm:text-base"></i>
+                    <input 
+                        type="text" 
+                        id="global-search-input" 
+                        oninput="handleGlobalSearch(this.value)"
+                        onkeydown="if(event.key === 'Enter') { navigateTo('cars'); }"
+                        placeholder="KHUNG TÌM KIẾM XE (Nhập tên xe: VinFast, Mazda, Xpander, 4 chỗ, 7 chỗ, xe điện...)" 
+                        class="w-full text-xs sm:text-sm md:text-base font-medium text-slate-800 placeholder-slate-400 focus:outline-none bg-transparent"
+                    >
+                    <button onclick="clearGlobalSearch()" id="clear-search-btn" class="hidden text-slate-400 hover:text-slate-600 mr-2">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
+                    <button onclick="navigateTo('cars')" class="hidden md:flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-2 rounded-md transition shrink-0">
+                        <span>Tìm xe</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- 3. LOGIN -->
+                <div class="col-span-3 sm:col-span-3 lg:col-span-2 flex">
+                    <button onclick="openLoginModal()" id="header-login-btn" class="w-full wf-box border-2 border-slate-800 rounded-lg bg-white hover:bg-blue-50 text-slate-900 font-bold text-xs sm:text-sm md:text-base transition flex items-center justify-center gap-2 p-2.5">
+                        <i class="fa-regular fa-circle-user text-blue-600 text-base sm:text-lg"></i>
+                        <span id="header-user-label">LOGIN</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- HÀNG 2: THANH ĐIỀU HƯỚNG 4 Ô (TRANG CHỦ | DANH SÁCH XE | GIỚI THIỆU | LIÊN HỆ) -->
+            <nav class="wf-box border-2 border-slate-800 rounded-lg overflow-hidden bg-white grid grid-cols-4 divide-x-2 divide-slate-800">
+                <button onclick="navigateTo('home')" data-nav="home" class="nav-tab py-2.5 sm:py-3 px-2 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 bg-blue-600 text-white">
+                    <i class="fa-solid fa-house hidden sm:inline"></i>
+                    <span>TRANG CHỦ</span>
+                </button>
+                <button onclick="navigateTo('cars')" data-nav="cars" class="nav-tab py-2.5 sm:py-3 px-2 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 bg-white text-slate-800 hover:bg-slate-100">
+                    <i class="fa-solid fa-carRear hidden sm:inline"></i>
+                    <span>DANH SÁCH XE</span>
+                </button>
+                <button onclick="navigateTo('about')" data-nav="about" class="nav-tab py-2.5 sm:py-3 px-2 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 bg-white text-slate-800 hover:bg-slate-100">
+                    <i class="fa-solid fa-map-location-dot hidden sm:inline"></i>
+                    <span>GIỚI THIỆU</span>
+                </button>
+                <button onclick="navigateTo('contact')" data-nav="contact" class="nav-tab py-2.5 sm:py-3 px-2 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 bg-white text-slate-800 hover:bg-slate-100">
+                    <i class="fa-solid fa-headset hidden sm:inline"></i>
+                    <span>LIÊN HỆ</span>
+                </button>
+            </nav>
+
+        </div>
+    </header>
+
+    <!-- =================================================================== -->
+    <!-- MAIN CONTENT CONTAINER -->
+    <!-- =================================================================== -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-6 py-6">
+
+        <!-- =============================================================== -->
+        <!-- 1. TRANG CHỦ (Bám sát bản thiết kế trang chủ.png) -->
+        <!-- =============================================================== -->
+        <section id="page-home" class="page-section active">
+            
+            <!-- KHỐI BANNER (Theo bản thiết kế: Khung lớn nằm ngay dưới thanh menu) -->
+            <div class="wf-box border-2 border-slate-800 rounded-xl overflow-hidden relative bg-slate-900 mb-8 shadow-md">
+                <!-- Ảnh Banner lấy từ asset/image/banner.jpg kèm fallback -->
+                <img 
+                    src="asset/image/banner.jpg" 
+                    onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1600&q=80';" 
+                    alt="Banner Cho Thuê Xe" 
+                    class="w-full h-[280px] sm:h-[360px] md:h-[420px] object-cover opacity-55"
+                >
+                
+                <!-- Nội dung trên Banner -->
+                <div class="absolute inset-0 flex flex-col justify-between p-5 sm:p-8 md:p-12 bg-gradient-to-r from-slate-950/85 via-slate-900/60 to-transparent">
+                    <div class="max-w-2xl">
+                        <span class="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 text-xs font-extrabold px-3 py-1 rounded-full uppercase tracking-wider mb-3">
+                            <i class="fa-solid fa-bolt"></i> BANNER KHUYẾN MÃI THÁNG NÀY
+                        </span>
+                        <h1 class="text-2xl sm:text-4xl md:text-5xl font-extrabold text-white leading-tight mb-3">
+                            Thuê Xe Tự Lái & Có Tài Xế <span class="text-sky-400">Giao Xe Tận Nơi 24/7</span>
+                        </h1>
+                        <p class="text-slate-200 text-xs sm:text-base mb-5 max-w-xl">
+                            Hơn 50+ dòng xe đời mới từ 4 chỗ, 5 chỗ, 7 chỗ đến xe điện VinFast. Thủ tục chỉ cần CCCD gắn chip, bảo hiểm thân vỏ hai chiều an tâm trên mọi hành trình.
+                        </p>
+                    </div>
+
+                    <!-- Thanh đặt lịch nhanh tích hợp trong Banner -->
+                    <div class="bg-white/95 backdrop-blur p-3 sm:p-4 rounded-xl border border-slate-200 shadow-lg max-w-4xl">
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Hình thức thuê</label>
+                                <select id="quick-mode" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-600">
+                                    <option value="all">Tất cả (Tự lái & Có tài)</option>
+                                    <option value="self">Thuê xe Tự lái</option>
+                                    <option value="driver">Thuê xe Có tài xế</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Loại xe</label>
+                                <select id="quick-seats" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-600">
+                                    <option value="all">Tất cả số chỗ (4 - 7 chỗ)</option>
+                                    <option value="4">Xe 4 chỗ (Mini / Sedan)</option>
+                                    <option value="5">Xe 5 chỗ (Sedan / CUV)</option>
+                                    <option value="7">Xe 7 chỗ (MPV / SUV)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Nhiên liệu</label>
+                                <select id="quick-fuel" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-blue-600">
+                                    <option value="all">Tất cả nhiên liệu</option>
+                                    <option value="Xăng">Xe Xăng</option>
+                                    <option value="Điện">Xe Điện VinFast</option>
+                                    <option value="Dầu">Xe Dầu (Diesel)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <button onclick="applyQuickBannerFilter()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    <span>TÌM XE NGAY</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIÊU ĐỀ: Những dòng xe nổi bật (Đúng theo wireframe trang chủ.png) -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-5">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+                        <span class="w-2 h-7 bg-blue-600 rounded-full inline-block"></span>
+                        Những dòng xe nổi bật
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-500 mt-0.5">8 mẫu xe được khách hàng đặt thuê nhiều nhất trong tuần (Bố cục 4 cột x 2 hàng bo góc tròn như bản thiết kế)</p>
+                </div>
+                <button onclick="navigateTo('cars')" class="text-blue-600 hover:text-blue-800 font-bold text-sm flex items-center gap-1.5 bg-blue-50 px-3.5 py-2 rounded-lg border border-blue-200 transition">
+                    <span>Xem toàn bộ 12 xe</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- LƯỚI 8 CARD XE NỔI BẬT (4 cột x 2 hàng, bo góc tròn lớn đúng wireframe trang chủ.png) -->
+            <div id="home-featured-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+                <!-- Được render tự động bằng JS từ mảng dữ liệu xe có ảnh trong asset/image/ -->
+            </div>
+
+            <!-- TIỆN ÍCH BỔ SUNG TRÊN TRANG CHỦ: TẠI SAO CHỌN VCAR & MÃ KHUYẾN MÃI -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5 rounded-2xl shadow flex items-center justify-between">
+                    <div>
+                        <span class="bg-white/20 text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase">Mã ưu đãi khách mới</span>
+                        <h3 class="text-lg font-extrabold mt-2">Giảm ngay 10% tổng đơn</h3>
+                        <p class="text-xs text-blue-100 mt-1">Nhập mã <strong class="bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded">THUEXE10</strong> ở trang thanh toán</p>
+                    </div>
+                    <i class="fa-solid fa-ticket text-4xl text-white/30"></i>
+                </div>
+                <div class="bg-white border-2 border-slate-200 p-5 rounded-2xl flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">Bảo hiểm thân vỏ 2 chiều</h3>
+                        <p class="text-xs text-slate-500 mt-1">100% xe có bảo hiểm vật chất thân vỏ, hỗ trợ cứu hộ kỹ thuật 24/24 toàn quốc.</p>
+                    </div>
+                </div>
+                <div class="bg-white border-2 border-slate-200 p-5 rounded-2xl flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm sm:text-base">Thủ tục nhận xe trong 10 phút</h3>
+                        <p class="text-xs text-slate-500 mt-1">Chỉ cần CCCD gắn chip & GPLX hợp lệ. Ký hợp đồng điện tử trực tiếp trên web.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- 2. TRANG DANH SÁCH XE (Bám sát bản thiết kế danh sách xe.png) -->
+        <!-- =============================================================== -->
+        <section id="page-cars" class="page-section">
+            
+            <!-- BỘ LỌC ĐA TIÊU CHÍ (Chức năng cần thiết giúp tìm xe nhanh) -->
+            <div class="wf-box bg-white border-2 border-slate-800 rounded-lg p-4 mb-6 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-blue-600"></i>
+                        <span class="font-extrabold text-sm sm:text-base text-slate-900">BỘ LỌC TÌM KIẾM XE NHANH</span>
+                    </div>
+                    <button onclick="resetAllCarFilters()" class="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1">
+                        <i class="fa-solid fa-rotate-left"></i> Đặt lại bộ lọc
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <!-- Lọc Số chỗ -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Số chỗ ngồi</label>
+                        <select id="filter-seats" onchange="renderCarListPage()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800">
+                            <option value="all">Tất cả số chỗ</option>
+                            <option value="4">Xe 4 chỗ</option>
+                            <option value="5">Xe 5 chỗ</option>
+                            <option value="7">Xe 7 chỗ</option>
+                        </select>
+                    </div>
+                    <!-- Lọc Hộp số -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Hộp số</label>
+                        <select id="filter-transmission" onchange="renderCarListPage()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800">
+                            <option value="all">Tất cả hộp số</option>
+                            <option value="Số tự động">Số tự động (AT)</option>
+                            <option value="Số sàn">Số sàn (MT)</option>
+                        </select>
+                    </div>
+                    <!-- Lọc Nhiên liệu -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Nhiên liệu</label>
+                        <select id="filter-fuel" onchange="renderCarListPage()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800">
+                            <option value="all">Tất cả nhiên liệu</option>
+                            <option value="Xăng">Xăng</option>
+                            <option value="Điện">Điện (VinFast EV)</option>
+                            <option value="Dầu">Dầu (Diesel)</option>
+                        </select>
+                    </div>
+                    <!-- Lọc Khoảng giá -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Mức giá tự lái/ngày</label>
+                        <select id="filter-price" onchange="renderCarListPage()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800">
+                            <option value="all">Mọi mức giá</option>
+                            <option value="under700">Dưới 700.000đ/ngày</option>
+                            <option value="700to1000">700.000đ - 1.000.000đ</option>
+                            <option value="over1000">Trên 1.000.000đ/ngày</option>
+                        </select>
+                    </div>
+                    <!-- Sắp xếp -->
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Sắp xếp theo</label>
+                        <select id="filter-sort" onchange="renderCarListPage()" class="w-full border border-slate-300 rounded-md px-3 py-2 text-xs sm:text-sm font-semibold text-slate-800">
+                            <option value="default">Mặc định (Nổi bật)</option>
+                            <option value="price-asc">Giá thấp đến cao</option>
+                            <option value="price-desc">Giá cao đến thấp</option>
+                            <option value="seats-desc">Số chỗ (7 chỗ -> 4 chỗ)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIÊU ĐỀ: Danh sách xe (Đúng vị trí góc trái trên của danh sách xe.png) -->
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+                    Danh sách xe <span id="car-list-count" class="text-sm font-semibold text-blue-600 ml-2">(12 xe sẵn sàng)</span>
+                </h2>
+                <div class="text-xs text-slate-500 hidden sm:block">
+                    Bấm vào <strong>CARD XE</strong> để xem trang <strong>Chi tiết xe</strong>
+                </div>
+            </div>
+
+            <!-- LƯỚI 12 CARD XE (4 cột x 3 hàng khung chữ nhật sắc nét đúng danh sách xe.png) -->
+            <div id="car-list-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <!-- Được render bằng JS -->
+            </div>
+
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- 3. TRANG CHI TIẾT XE (Bám sát 100% bản thiết kế chi tiết xe.png) -->
+        <!-- =============================================================== -->
+        <section id="page-detail" class="page-section">
+            
+            <!-- Thanh điều hướng quay lại -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <button onclick="navigateTo('cars')" class="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-slate-700 hover:text-blue-600 bg-white px-3.5 py-2 rounded-lg border border-slate-300 shadow-sm transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Quay lại Danh sách xe</span>
+                </button>
+                <div class="text-xs text-slate-500">
+                    Đường dẫn ảnh: <code id="detail-asset-path-label" class="bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-mono">asset/image/...</code>
+                </div>
+            </div>
+
+            <!-- HÀNG TRÊN: CỘT TRÁI (ẢNH XE + 5 Ô ẢNH NHỎ) | CỘT PHẢI (TÊN XE, THÔNG TIN CƠ BẢN, GIÁ, NÚT ĐẶT XE) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6 items-stretch">
+                
+                <!-- CỘT TRÁI (7/12): KHUNG ẢNH XE LỚN + 5 Ô THUMBNAIL BÊN DƯỚI -->
+                <div class="lg:col-span-7 flex flex-col justify-between gap-4">
+                    
+                    <!-- Khung ẢNH XE lớn -->
+                    <div class="wf-box border-2 border-slate-800 rounded-lg bg-white p-3 relative flex-grow flex flex-col justify-center overflow-hidden min-h-[300px] sm:min-h-[380px]">
+                        <div class="absolute top-5 left-5 z-10 flex items-center gap-2">
+                            <span id="detail-badge-type" class="bg-slate-900/80 backdrop-blur text-white text-xs font-bold px-3 py-1 rounded">
+                                ẢNH XE
+                            </span>
+                            <span id="detail-badge-status" class="bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check"></i> Có sẵn tại bãi
+                            </span>
+                        </div>
+
+                        <img 
+                            id="detail-main-img" 
+                            src="asset/image/vf8-1.jpg" 
+                            alt="Ảnh chi tiết xe" 
+                            class="w-full h-[280px] sm:h-[360px] object-cover rounded"
+                        >
+
+                        <!-- Nút chuyển ảnh trái/phải -->
+                        <button onclick="prevDetailImage()" class="absolute left-5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-slate-900 shadow border border-slate-300 flex items-center justify-center transition">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button onclick="nextDetailImage()" class="absolute right-5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white text-slate-900 shadow border border-slate-300 flex items-center justify-center transition">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+
+                        <div id="detail-img-caption" class="text-center text-xs font-semibold text-slate-500 mt-2">
+                            Góc chụp 1/5 - Ngoại thất tổng thể (Click vào 5 ô bên dưới để đổi góc nhìn)
+                        </div>
+                    </div>
+
+                    <!-- Thanh 5 ô ảnh nhỏ [1][2][3][4][5] đúng theo bản vẽ chi tiết xe.png -->
+                    <div id="detail-thumbnails-row" class="wf-box border-2 border-slate-800 rounded-lg bg-white grid grid-cols-5 divide-x-2 divide-slate-800 overflow-hidden">
+                        <!-- 5 ô ảnh nhỏ được JS render tại đây -->
+                    </div>
+                </div>
+
+                <!-- CỘT PHẢI (5/12): TÊN XE, THÔNG TIN CƠ BẢN, GIÁ THUÊ TỰ LÁI / CÓ TÀI XẾ, NÚT ĐẶT XE -->
+                <div class="lg:col-span-5 wf-box border-2 border-slate-800 rounded-lg bg-white p-5 sm:p-6 flex flex-col justify-between shadow-sm">
+                    <div>
+                        <!-- Tên xe & Đánh giá -->
+                        <div class="flex items-start justify-between gap-2 border-b border-slate-200 pb-4 mb-4">
+                            <div>
+                                <span id="detail-brand-badge" class="text-xs font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-1 rounded border border-blue-200">
+                                    VINFAST
+                                </span>
+                                <h1 id="detail-car-name" class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">
+                                    VinFast VF8 Eco 2025
+                                </h1>
+                                <div class="flex items-center gap-3 mt-1.5 text-xs text-slate-600">
+                                    <span class="text-amber-500 font-bold"><i class="fa-solid fa-star"></i> 4.9 (128 chuyến)</span>
+                                    <span>•</span>
+                                    <span id="detail-plate">Biển số: 51K-889.xx</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- THÔNG TIN CƠ BẢN CỦA XE -->
+                        <div class="mb-5">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2.5">
+                                THÔNG TIN CƠ BẢN CỦA XE:
+                            </h3>
+                            <div class="grid grid-cols-2 gap-2.5 text-xs sm:text-sm">
+                                <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-lg flex items-center gap-2.5">
+                                    <i class="fa-solid fa-users text-blue-600 text-base w-5 text-center"></i>
+                                    <div>
+                                        <span class="block text-[11px] text-slate-500">Số chỗ ngồi</span>
+                                        <strong id="detail-seats" class="text-slate-900">5 chỗ</strong>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-lg flex items-center gap-2.5">
+                                    <i class="fa-solid fa-gears text-blue-600 text-base w-5 text-center"></i>
+                                    <div>
+                                        <span class="block text-[11px] text-slate-500">Truyền động</span>
+                                        <strong id="detail-transmission" class="text-slate-900">Số tự động</strong>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-lg flex items-center gap-2.5">
+                                    <i class="fa-solid fa-gas-pump text-blue-600 text-base w-5 text-center"></i>
+                                    <div>
+                                        <span class="block text-[11px] text-slate-500">Nhiên liệu</span>
+                                        <strong id="detail-fuel" class="text-slate-900">Điện (EV)</strong>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-lg flex items-center gap-2.5">
+                                    <i class="fa-solid fa-gauge-high text-blue-600 text-base w-5 text-center"></i>
+                                    <div>
+                                        <span class="block text-[11px] text-slate-500">Tiêu hao / Quãng đường</span>
+                                        <strong id="detail-consumption" class="text-slate-900">420 km/lần sạc</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GIÁ CHO THUÊ: CHỌN TỰ LÁI HOẶC CÓ TÀI XẾ -->
+                        <div class="mb-5">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-2.5">
+                                GIÁ CHO THUÊ (CHỌN HÌNH THỨC THUÊ):
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <!-- Option 1: Tự lái -->
+                                <label onclick="selectDetailRentalMode('self')" id="mode-card-self" class="cursor-pointer border-2 border-blue-600 bg-blue-50/70 rounded-xl p-3.5 transition relative">
+                                    <input type="radio" name="detail_rental_mode" value="self" checked class="hidden">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="font-extrabold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-steering-wheel text-blue-600"></i> THUÊ TỰ LÁI
+                                        </span>
+                                        <i class="fa-solid fa-circle-check text-blue-600" id="check-icon-self"></i>
+                                    </div>
+                                    <div id="detail-price-self" class="text-lg sm:text-xl font-black text-blue-700">
+                                        950.000đ<span class="text-xs font-normal text-slate-500">/ngày</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-1">Tự do lịch trình, giao xe tận nhà</p>
+                                </label>
+
+                                <!-- Option 2: Có tài xế -->
+                                <label onclick="selectDetailRentalMode('driver')" id="mode-card-driver" class="cursor-pointer border-2 border-slate-200 hover:border-slate-300 bg-white rounded-xl p-3.5 transition relative">
+                                    <input type="radio" name="detail_rental_mode" value="driver" class="hidden">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="font-extrabold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-user-tie text-emerald-600"></i> CÓ TÀI XẾ
+                                        </span>
+                                        <i class="fa-regular fa-circle text-slate-400" id="check-icon-driver"></i>
+                                    </div>
+                                    <div id="detail-price-driver" class="text-lg sm:text-xl font-black text-emerald-700">
+                                        1.450.000đ<span class="text-xs font-normal text-slate-500">/ngày</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-500 mt-1">Tài xế rành đường, phục vụ 10h/ngày</p>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Chọn nhanh Ngày Nhận & Ngày Trả để tính tạm tính -->
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-5">
+                            <div class="grid grid-cols-2 gap-3 mb-2">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Ngày nhận xe</label>
+                                    <input type="date" id="detail-pickup-date" onchange="updateDetailQuickEstimate()" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs font-semibold">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1">Ngày trả xe</label>
+                                    <input type="date" id="detail-return-date" onchange="updateDetailQuickEstimate()" class="w-full border border-slate-300 rounded px-2.5 py-1.5 text-xs font-semibold">
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-200">
+                                <span class="text-slate-600 font-medium">Tạm tính (<span id="detail-est-days">2</span> ngày):</span>
+                                <strong id="detail-est-total" class="text-base font-extrabold text-rose-600">1.900.000đ</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NÚT ĐẶT XE & TƯ VẤN -->
+                    <div class="space-y-2.5">
+                        <button onclick="proceedToCheckoutFromDetail()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3.5 px-5 rounded-xl text-sm sm:text-base shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-calendar-check"></i>
+                            <span>NÚT ĐẶT XE NGAY (ĐẾN TRANG THANH TOÁN)</span>
+                        </button>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <button onclick="openContractModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2.5 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-file-contract text-blue-600"></i>
+                                <span>Xem hợp đồng mẫu</span>
+                            </button>
+                            <button onclick="navigateTo('contact')" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-bold py-2.5 px-3 rounded-lg text-xs transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-phone-volume"></i>
+                                <span>Gọi giữ xe: 1900 8866</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- HÀNG DƯỚI: CỘT TRÁI (THÔNG TIN CHI TIẾT, CHỨC NĂNG, OPTION) | CỘT PHẢI (CHÍNH SÁCH CHO THUÊ, BẢO HIỂM, KM GIỚI HẠN, PHỤ THU) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- KHUNG TRÁI (7/12): THÔNG TIN CHI TIẾT CỦA XE, CÓ NHỮNG CHỨC NĂNG GÌ, OPTION GÌ,.. -->
+                <div class="lg:col-span-7 wf-box border-2 border-slate-800 rounded-lg bg-white p-5 sm:p-6 shadow-sm">
+                    <div class="flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                            <i class="fa-solid fa-list-check"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base sm:text-lg font-extrabold text-slate-900 uppercase">
+                                THÔNG TIN CHI TIẾT CỦA XE & CÁC CHỨC NĂNG, OPTION
+                            </h2>
+                            <p class="text-xs text-slate-500">Mô tả đặc điểm vận hành và trang bị tiện nghi theo xe</p>
+                        </div>
+                    </div>
+
+                    <!-- Mô tả chi tiết -->
+                    <p id="detail-description" class="text-sm text-slate-700 leading-relaxed mb-5 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        Mẫu xe đời mới được bảo dưỡng định kỳ chính hãng, nội thất bọc da cao cấp sạch sẽ không mùi, trang bị đầy đủ công nghệ hỗ trợ lái an toàn vượt trội cho cả đi phố lẫn đi tỉnh xa.
+                    </p>
+
+                    <!-- Danh sách các Option & Tiện nghi trên xe -->
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-3">
+                        CÁC CHỨC NĂNG & OPTION TRANG BỊ TRÊN XE:
+                    </h3>
+                    <div id="detail-options-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                        <!-- Được JS cập nhật theo từng xe -->
+                    </div>
+
+                    <!-- Thông số kỹ thuật chi tiết -->
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-500 mb-3">
+                        BẢNG THÔNG SỐ KỸ THUẬT:
+                    </h3>
+                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                        <table class="w-full text-xs sm:text-sm text-left">
+                            <tbody class="divide-y divide-slate-200">
+                                <tr class="bg-slate-50">
+                                    <td class="py-2.5 px-4 font-semibold text-slate-600">Năm sản xuất / Đời xe</td>
+                                    <td id="spec-year" class="py-2.5 px-4 font-bold text-slate-900">2024 - 2025</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-4 font-semibold text-slate-600">Dung tích cốp hành lý</td>
+                                    <td id="spec-trunk" class="py-2.5 px-4 font-bold text-slate-900">4 Vali cỡ lớn + Balo</td>
+                                </tr>
+                                <tr class="bg-slate-50">
+                                    <td class="py-2.5 px-4 font-semibold text-slate-600">Hệ thống an toàn</td>
+                                    <td class="py-2.5 px-4 font-bold text-slate-900">6 Túi khí, Phanh ABS, EBD, Cân bằng điện tử ESC</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2.5 px-4 font-semibold text-slate-600">Tiện ích đi kèm miễn phí</td>
+                                    <td class="py-2.5 px-4 font-bold text-emerald-700">Thẻ thu phí tự động ePass/VETC, Nước suối, Khăn lạnh</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- KHUNG PHẢI (5/12): CHÍNH SÁCH CHO THUÊ, BẢO HIỂM THÂN VỎ, SỐ KM GIỚI HẠN, TRẢ TRỄ, QUÁ KM -->
+                <div class="lg:col-span-5 wf-box border-2 border-slate-800 rounded-lg bg-white p-5 sm:p-6 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 border-b-2 border-slate-100 pb-3 mb-4">
+                            <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-scale-balanced"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base sm:text-lg font-extrabold text-slate-900 uppercase">
+                                    CHÍNH SÁCH CHO THUÊ & BẢNG PHÍ PHỤ THU
+                                </h2>
+                                <p class="text-xs text-slate-500">Minh bạch 100% — Không chi phí ẩn</p>
+                            </div>
+                        </div>
+
+                        <!-- 4 Mục trọng tâm đúng yêu cầu trong bản vẽ chi tiết xe.png -->
+                        <div class="space-y-3.5 text-xs sm:text-sm">
+                            
+                            <!-- 1. Bảo hiểm thân vỏ -->
+                            <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+                                <div class="flex items-center justify-between font-extrabold text-emerald-900 mb-1">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-shield-heart text-emerald-600"></i>
+                                        1. BẢO HIỂM THÂN VỎ (2 CHIỀU)
+                                    </span>
+                                    <span class="bg-emerald-600 text-white text-[11px] px-2 py-0.5 rounded">Đã bao gồm</span>
+                                </div>
+                                <p class="text-xs text-emerald-800 leading-relaxed">
+                                    Xe đã mua <strong>Bảo hiểm vật chất thân vỏ 2 chiều</strong>. Nếu xảy ra va quệt ngoài ý muốn, khách hàng chỉ chịu mức khấu trừ (miễn thường) tối đa <strong>2.000.000đ/vụ</strong>, bảo hiểm chi trả toàn bộ phần còn lại.
+                                </p>
+                            </div>
+
+                            <!-- 2. Số km giới hạn mỗi ngày -->
+                            <div class="p-3.5 rounded-xl bg-blue-50 border border-blue-200">
+                                <div class="flex items-center justify-between font-extrabold text-blue-900 mb-1">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-road text-blue-600"></i>
+                                        2. SỐ KM GIỚI HẠN MỖI NGÀY
+                                    </span>
+                                    <span id="policy-km-limit" class="text-blue-700 font-black">300 km / ngày</span>
+                                </div>
+                                <p class="text-xs text-blue-800 leading-relaxed">
+                                    Cộng dồn theo tổng số ngày thuê (Ví dụ: Thuê 3 ngày được đi tối đa <strong>900 km</strong>).
+                                </p>
+                            </div>
+
+                            <!-- 3. Quá km phụ thu nhiêu -->
+                            <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                                <div class="flex items-center justify-between font-extrabold text-amber-900 mb-1">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-gauge-Simple-high text-amber-600"></i>
+                                        3. PHỤ THU QUÁ SỐ KM GIỚI HẠN
+                                    </span>
+                                    <span id="policy-over-km" class="text-rose-600 font-black">4.000đ / km</span>
+                                </div>
+                                <p class="text-xs text-amber-900 leading-relaxed">
+                                    Khi tổng quãng đường di chuyển vượt mức giới hạn, phí phụ thu vượt km chỉ từ <strong>3.000đ - 5.000đ/km</strong> tùy dòng xe.
+                                </p>
+                            </div>
+
+                            <!-- 4. Trả xe trễ phụ thu nhiêu -->
+                            <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200">
+                                <div class="flex items-center justify-between font-extrabold text-rose-900 mb-1">
+                                    <span class="flex items-center gap-2">
+                                        <i class="fa-solid fa-clock-rotate-left text-rose-600"></i>
+                                        4. PHỤ THU TRẢ XE TRỄ GIỜ
+                                    </span>
+                                    <span id="policy-late-hour" class="text-rose-600 font-black">100.000đ / giờ</span>
+                                </div>
+                                <p class="text-xs text-rose-800 leading-relaxed">
+                                    Trả xe trễ so với giờ ghi trên hợp đồng phụ thu <strong>100.000đ/giờ</strong>. Trường hợp trễ <strong>quá 5 giờ</strong> sẽ tính tròn thành <strong>01 ngày thuê xe</strong>.
+                                </p>
+                            </div>
+
+                            <!-- 5. Thủ tục giấy tờ & Phụ phí khác -->
+                            <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                                <h4 class="font-extrabold text-slate-800 text-xs uppercase mb-1.5">
+                                    <i class="fa-solid fa-id-card-clip text-slate-600 mr-1"></i> Điều kiện & Giấy tờ nhận xe:
+                                </h4>
+                                <ul class="text-xs text-slate-600 space-y-1 list-disc list-inside">
+                                    <li>CCCD gắn chip (hoặc VNeID mức 2) + Bằng lái xe hạng B1/B2 trở lên.</li>
+                                    <li>Thế chấp: 15.000.000đ tiền mặt/chuyển khoản hoặc 01 xe máy kèm cà vẹt gốc.</li>
+                                    <li>Vệ sinh / Khử mùi (nếu hút thuốc hoặc làm bẩn nội thất): 150.000đ - 300.000đ.</li>
+                                </ul>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+                        <span><i class="fa-solid fa-check-double text-emerald-600 mr-1"></i>Cam kết xe đúng hình 100%</span>
+                        <button onclick="proceedToCheckoutFromDetail()" class="text-blue-600 font-bold hover:underline">Đặt chiếc xe này ngay &rarr;</button>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- 4. TRANG GIỚI THIỆU (Tự thiết kế + BẢN ĐỒ THU NHỎ ĐỊNH VỊ BÃI XE) -->
+        <!-- =============================================================== -->
+        <section id="page-about" class="page-section">
+            
+            <!-- Hero Giới thiệu -->
+            <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-6 sm:p-8 mb-8 shadow-sm">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <div class="lg:col-span-7">
+                        <span class="bg-blue-100 text-blue-700 text-xs font-extrabold px-3 py-1 rounded-full uppercase">Về VCar Rental</span>
+                        <h1 class="text-2xl sm:text-4xl font-extrabold text-slate-900 mt-3 mb-4 leading-tight">
+                            Đơn Vị Cho Thuê Xe Tự Lái & Có Tài Xế Uy Tín Hàng Đầu
+                        </h1>
+                        <p class="text-sm sm:text-base text-slate-600 leading-relaxed mb-4">
+                            Thành lập từ năm 2019, <strong>VCAR RENTAL</strong> mang đến giải pháp di chuyển chủ động, an toàn và tiết kiệm. Toàn bộ dàn xe đều là xe đời mới từ 2023 - 2026, được kiểm định kỹ thuật 15 bước trước khi bàn giao cho khách hàng.
+                        </p>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-center">
+                                <span class="block text-2xl font-black text-blue-600">60+</span>
+                                <span class="text-xs font-semibold text-slate-600">Đầu xe đời mới</span>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-center">
+                                <span class="block text-2xl font-black text-emerald-600">15.000+</span>
+                                <span class="text-xs font-semibold text-slate-600">Chuyến xe an toàn</span>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-center">
+                                <span class="block text-2xl font-black text-amber-500">4.9/5★</span>
+                                <span class="text-xs font-semibold text-slate-600">Đánh giá hài lòng</span>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-center">
+                                <span class="block text-2xl font-black text-rose-600">24/7</span>
+                                <span class="text-xs font-semibold text-slate-600">Hỗ trợ cứu hộ</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lg:col-span-5">
+                        <div class="border-2 border-slate-800 rounded-xl overflow-hidden relative">
+                            <img 
+                                src="asset/image/baixe.jpg" 
+                                onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=900&q=80';" 
+                                alt="Bãi xe VCar Rental" 
+                                class="w-full h-64 sm:h-72 object-cover"
+                            >
+                            <div class="bg-slate-900 text-white text-xs p-3 flex items-center justify-between">
+                                <span><i class="fa-solid fa-camera text-amber-400 mr-1.5"></i>Hình ảnh thực tế bãi xe (`asset/image/baixe.jpg`)</span>
+                                <span class="bg-emerald-600 px-2 py-0.5 rounded font-bold">Mở cửa 24/24</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KHU VỰC TRỌNG TÂM: BẢN ĐỒ THU NHỎ ĐỊNH VỊ BÃI XE (Theo đúng yêu cầu đề bài) -->
+            <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-5 sm:p-6 mb-8 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4 mb-5">
+                    <div>
+                        <span class="text-xs font-extrabold uppercase text-emerald-600 tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-location-crosshairs"></i> ĐỊNH VỊ GPS BÃI XE TRỰC TUYẾN
+                        </span>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-1">
+                            Bản Đồ Thu Nhỏ Định Vị Hệ Thống Bãi Xe
+                        </h2>
+                    </div>
+                    <!-- Nút chuyển đổi các bãi xe trên bản đồ thu nhỏ -->
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="focusDepotOnMap(0)" id="depot-btn-0" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-location-dot"></i> Bãi xe Trung tâm TP.HCM
+                        </button>
+                        <button onclick="focusDepotOnMap(1)" id="depot-btn-1" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-location-dot text-rose-600"></i> Bãi xe Vĩnh Long - Miền Tây
+                        </button>
+                        <button onclick="focusDepotOnMap(2)" id="depot-btn-2" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-location-dot text-emerald-600"></i> Bãi xe Sân bay Tân Sơn Nhất
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                    <!-- Thông tin chi tiết bãi xe đang chọn -->
+                    <div class="lg:col-span-5 flex flex-col justify-between bg-slate-50 border border-slate-200 rounded-xl p-5">
+                        <div>
+                            <div class="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-md mb-3">
+                                <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+                                <span id="depot-status-badge">Đang mở cửa đón khách nhận xe</span>
+                            </div>
+                            <h3 id="depot-title" class="text-lg font-extrabold text-slate-900 mb-2">
+                                Bãi Xe Trung Tâm VCar (Quận 7 - TP.HCM)
+                            </h3>
+                            <p id="depot-address" class="text-xs sm:text-sm text-slate-600 mb-4 flex items-start gap-2">
+                                <i class="fa-solid fa-map-pin text-rose-600 mt-1"></i>
+                                <span>Số 128 Nguyễn Thị Thập, Phường Bình Thuận, Quận 7, TP. Hồ Chí Minh</span>
+                            </p>
+
+                            <div class="space-y-2.5 text-xs sm:text-sm border-t border-slate-200 pt-3">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Tọa độ GPS:</span>
+                                    <strong id="depot-coords" class="font-mono text-slate-800">10.7379° N, 106.7218° E</strong>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Số lượng xe sẵn tại bãi:</span>
+                                    <strong id="depot-car-count" class="text-blue-600">28 xe (4 chỗ, 5 chỗ, 7 chỗ)</strong>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Giờ giao/nhận xe:</span>
+                                    <strong class="text-slate-800">05:00 - 23:30 (Hỗ trợ đêm 24/7)</strong>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-500">Bãi giữ xe máy khách gửi:</span>
+                                    <strong class="text-emerald-700">Miễn phí có mái che & camera</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-4 border-t border-slate-200 flex flex-col sm:flex-row gap-2.5">
+                            <a id="depot-gmaps-link" href="https://www.google.com/maps?q=10.7379,106.7218" target="_blank" rel="noopener noreferrer" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm py-2.5 px-4 rounded-lg text-center transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-diamond-turn-right"></i>
+                                <span>Mở Google Maps Chỉ Đường</span>
+                            </a>
+                            <button onclick="navigateTo('cars')" class="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-xs sm:text-sm py-2.5 px-4 rounded-lg transition">
+                                Xem xe tại bãi
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- BẢN ĐỒ THU NHỎ TƯƠNG TÁC (Interactive Leaflet Mini-Map) -->
+                    <div class="lg:col-span-7 flex flex-col">
+                        <div class="wf-box border-2 border-slate-800 rounded-xl overflow-hidden relative h-[320px] sm:h-[360px] bg-slate-200 shadow-inner">
+                            <div id="depot-mini-map" class="w-full h-full"></div>
+                            <!-- Nhãn nổi góc trên bản đồ -->
+                            <div class="absolute top-3 right-3 z-[20] bg-white/95 backdrop-blur px-3 py-1.5 rounded-lg shadow border border-slate-300 text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <i class="fa-solid fa-compass text-blue-600"></i>
+                                <span>Bản đồ thu nhỏ định vị bãi xe</span>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-2 text-center">
+                            💡 Mẹo: Bạn có thể phóng to/thu nhỏ bản đồ thu nhỏ hoặc bấm vào biểu tượng ghim đỏ trên bản đồ để xem vị trí chính xác của bãi xe.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUY TRÌNH 4 BƯỚC THUÊ XE ĐƠN GIẢN -->
+            <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-6">
+                <h2 class="text-lg sm:text-xl font-extrabold text-slate-900 mb-5 text-center uppercase">
+                    Quy Trình 4 Bước Thuê Xe Nhanh Chóng Tại VCar
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 relative">
+                        <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-black text-sm flex items-center justify-center mb-3">1</span>
+                        <h3 class="font-extrabold text-slate-900 text-sm mb-1">Chọn xe trên Website</h3>
+                        <p class="text-xs text-slate-600">Xem hình ảnh thực tế, kiểm tra giá tự lái hoặc có tài xế và chính sách phụ thu minh bạch.</p>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 relative">
+                        <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-black text-sm flex items-center justify-center mb-3">2</span>
+                        <h3 class="font-extrabold text-slate-900 text-sm mb-1">Đặt xe & Xác nhận</h3>
+                        <p class="text-xs text-slate-600">Điền thông tin nhận xe, chọn thanh toán QR hoặc đặt cọc giữ xe chỉ 30% giá trị chuyến đi.</p>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 relative">
+                        <span class="w-8 h-8 rounded-full bg-blue-600 text-white font-black text-sm flex items-center justify-center mb-3">3</span>
+                        <h3 class="font-extrabold text-slate-900 text-sm mb-1">Nhận xe tại bãi / Tận nhà</h3>
+                        <p class="text-xs text-slate-600">Đối chiếu CCCD + GPLX, ký biên bản bàn giao tình trạng xe và mức nhiên liệu ban đầu.</p>
+                    </div>
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 relative">
+                        <span class="w-8 h-8 rounded-full bg-emerald-600 text-white font-black text-sm flex items-center justify-center mb-3">4</span>
+                        <h3 class="font-extrabold text-slate-900 text-sm mb-1">Trả xe & Hoàn cọc ngay</h3>
+                        <p class="text-xs text-slate-600">Kiểm tra xe nhanh trong 5 phút và hoàn trả 100% tài sản thế chấp ngay khi kết thúc chuyến.</p>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- 5. TRANG LIÊN HỆ (Tự thiết kế hiện đại, đầy đủ form & FAQ) -->
+        <!-- =============================================================== -->
+        <section id="page-contact" class="page-section">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Cột trái: Thông tin liên hệ trực tiếp -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-6">
+                        <span class="bg-blue-100 text-blue-700 text-xs font-extrabold px-3 py-1 rounded-full uppercase">Hỗ trợ khách hàng 24/7</span>
+                        <h1 class="text-2xl font-extrabold text-slate-900 mt-3 mb-2">Liên Hệ Với VCar Rental</h1>
+                        <p class="text-xs sm:text-sm text-slate-600 mb-5">
+                            Cần tư vấn thuê xe tự lái, thuê xe hoa cưới, hợp đồng xe tháng cho công ty hoặc hỗ trợ kỹ thuật trên đường? Đội ngũ VCar luôn trực chiến 24/24.
+                        </p>
+
+                        <div class="space-y-3.5 text-sm">
+                            <div class="flex items-start gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                                <div class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-phone-volume"></i>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-500 block">Tổng đài đặt xe & Cứu hộ 24/7</span>
+                                    <strong class="text-slate-900 text-base">1900 8866 — 0909 123 456</strong>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                                <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-envelope"></i>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-500 block">Email hỗ trợ & Báo giá hợp đồng</span>
+                                    <strong class="text-slate-900">cskh@vcarrental.vn</strong>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                                <div class="w-10 h-10 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-warehouse"></i>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-500 block">Hệ thống bãi xe chính</span>
+                                    <strong class="text-slate-900 text-xs sm:text-sm block">• CS1: 128 Nguyễn Thị Thập, Quận 7, TP.HCM</strong>
+                                    <strong class="text-slate-900 text-xs sm:text-sm block">• CS2: Phường 9, TP. Vĩnh Long, Vĩnh Long</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 pt-4 border-t border-slate-200">
+                            <button onclick="navigateTo('about')" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-4 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-map-location-dot text-amber-400"></i>
+                                <span>Xem Bản Đồ Thu Nhỏ Định Vị Bãi Xe</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột phải: Form gửi yêu cầu liên hệ & tư vấn -->
+                <div class="lg:col-span-7">
+                    <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-6 sm:p-8">
+                        <h2 class="text-xl font-extrabold text-slate-900 mb-1">Gửi Yêu Cầu Tư Vấn / Báo Giá Thuê Xe</h2>
+                        <p class="text-xs sm:text-sm text-slate-500 mb-5">Điền thông tin bên dưới, chuyên viên điều phối xe sẽ gọi lại cho bạn trong vòng 5 phút.</p>
+
+                        <form onsubmit="handleContactSubmit(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Họ và tên của bạn *</label>
+                                    <input type="text" id="contact-name" required placeholder="Nhập họ và tên..." class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Số điện thoại / Zalo *</label>
+                                    <input type="tel" id="contact-phone" required placeholder="Ví dụ: 0909123456" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email (nhận báo giá)</label>
+                                    <input type="email" id="contact-email" placeholder="example@gmail.com" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nhu cầu cần hỗ trợ *</label>
+                                    <select id="contact-topic" class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:border-blue-600">
+                                        <option value="Tư vấn thuê xe tự lái">Tư vấn thuê xe tự lái ngắn ngày</option>
+                                        <option value="Thuê xe có tài xế đi tỉnh">Thuê xe có tài xế đi tỉnh / du lịch</option>
+                                        <option value="Thuê xe theo tháng cho công ty">Báo giá thuê xe dài hạn theo tháng</option>
+                                        <option value="Khiếu nại / Hỗ trợ kỹ thuật">Góp ý dịch vụ / Hỗ trợ hợp đồng</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nội dung chi tiết *</label>
+                                <textarea id="contact-message" rows="4" required placeholder="Ghi rõ dòng xe bạn quan tâm, ngày dự kiến nhận xe, lộ trình di chuyển..." class="w-full border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600"></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 px-6 rounded-xl text-sm sm:text-base transition flex items-center justify-center gap-2 shadow">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>GỬI YÊU CẦU LIÊN HỆ NGAY</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- =============================================================== -->
+        <!-- 6. TRANG THANH TOÁN & ĐẶT XE (Đề xuất chuyên nghiệp & đầy đủ chức năng) -->
+        <!-- =============================================================== -->
+        <section id="page-checkout" class="page-section">
+            
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-5">
+                <div>
+                    <span class="text-xs font-extrabold uppercase text-blue-600 tracking-wider">Đặt xe & Thanh toán trực tuyến</span>
+                    <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+                        Trang Thanh Toán & Xác Nhận Hợp Đồng Thuê Xe
+                    </h1>
+                </div>
+                <button onclick="navigateTo('detail')" class="text-xs sm:text-sm font-bold text-slate-700 hover:text-blue-600 bg-white px-3.5 py-2 rounded-lg border border-slate-300 transition">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Đổi dòng xe khác
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- CỘT TRÁI (7/12): 3 BƯỚC ĐIỀN THÔNG TIN, LỊCH TRÌNH & PHƯƠNG THỨC THANH TOÁN -->
+                <div class="lg:col-span-7 space-y-6">
+                    
+                    <!-- BƯỚC 1: THÔNG TIN NGƯỜI THUÊ & GIẤY TỜ LÁI XE -->
+                    <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-5 sm:p-6">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-3 mb-4">
+                            <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">1</span>
+                                THÔNG TIN KHÁCH HÀNG & GIẤY TỜ THUÊ XE
+                            </h2>
+                            <button type="button" onclick="fillDemoCustomerData()" class="text-xs font-bold text-blue-600 hover:underline">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Điền nhanh dữ liệu mẫu
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Họ và tên người đứng tên hợp đồng *</label>
+                                <input type="text" id="chk-fullname" required placeholder="Nguyễn Văn A" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Số điện thoại liên hệ nhận xe *</label>
+                                <input type="tel" id="chk-phone" required placeholder="0909 888 999" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Số CCCD gắn chip (12 số) *</label>
+                                <input type="text" id="chk-cccd" required placeholder="07909900xxxx" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Số Giấy phép lái xe (Hạng B1/B2) *</label>
+                                <input type="text" id="chk-gplx" placeholder="790123xxxxxx (Không bắt buộc nếu thuê có tài)" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BƯỚC 2: THỜI GIAN, HÌNH THỨC THUÊ, ĐỊA ĐIỂM NHẬN XE & DỊCH VỤ CỘNG THÊM -->
+                    <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-5 sm:p-6">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3 mb-4">
+                            <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">2</span>
+                            LỊCH TRÌNH, ĐỊA ĐIỂM NHẬN XE & DỊCH VỤ BỔ SUNG
+                        </h2>
+
+                        <!-- Chọn xe nhanh trong trang thanh toán -->
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Dòng xe đang chọn đặt:</label>
+                            <select id="chk-car-select" onchange="handleCheckoutCarChange(this.value)" class="w-full border-2 border-blue-600 bg-blue-50/40 rounded-lg px-3 py-2.5 text-sm font-extrabold text-slate-900">
+                                <!-- Render danh sách 12 xe -->
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Hình thức thuê</label>
+                                <select id="chk-mode" onchange="recalculateCheckout()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold">
+                                    <option value="self">Thuê Tự Lái</option>
+                                    <option value="driver">Có Tài Xế Đưa Đón</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Ngày nhận xe</label>
+                                <input type="date" id="chk-pickup-date" onchange="recalculateCheckout()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Ngày trả xe</label>
+                                <input type="date" id="chk-return-date" onchange="recalculateCheckout()" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-semibold">
+                            </div>
+                        </div>
+
+                        <!-- Phương thức nhận xe -->
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-700 mb-2">Địa điểm nhận xe:</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <label class="border border-slate-300 rounded-lg p-3 flex items-center gap-2.5 cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="chk_delivery" value="depot" checked onchange="recalculateCheckout()" class="text-blue-600">
+                                    <div class="text-xs">
+                                        <strong class="block text-slate-900">Nhận xe tại Bãi xe VCar</strong>
+                                        <span class="text-emerald-600 font-semibold">Miễn phí giao nhận (0đ)</span>
+                                    </div>
+                                </label>
+                                <label class="border border-slate-300 rounded-lg p-3 flex items-center gap-2.5 cursor-pointer hover:bg-slate-50">
+                                    <input type="radio" name="chk_delivery" value="home" onchange="recalculateCheckout()" class="text-blue-600">
+                                    <div class="text-xs">
+                                        <strong class="block text-slate-900">Giao xe tận nơi (Nhà / Sân bay)</strong>
+                                        <span class="text-blue-600 font-semibold">Phí giao nhận 2 chiều: +150.000đ</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <input type="text" id="chk-address" placeholder="Nhập địa chỉ nhận xe hoặc chọn Bãi xe Quận 7 / Vĩnh Long..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm mt-2.5">
+                        </div>
+
+                        <!-- Dịch vụ cộng thêm -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-2">Tùy chọn bảo hiểm & Tiện ích bổ sung:</label>
+                            <div class="space-y-2 text-xs sm:text-sm">
+                                <label class="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer">
+                                    <span class="flex items-center gap-2">
+                                        <input type="checkbox" id="addon-insurance" onchange="recalculateCheckout()" class="rounded text-blue-600">
+                                        <span><strong>Gói Bảo hiểm Miễn thường 0đ</strong> (Miễn 100% phí đền bù trầy xước nhỏ)</span>
+                                    </span>
+                                    <strong class="text-blue-700">+100.000đ/ngày</strong>
+                                </label>
+                                <label class="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50 cursor-pointer">
+                                    <span class="flex items-center gap-2">
+                                        <input type="checkbox" id="addon-babyseat" onchange="recalculateCheckout()" class="rounded text-blue-600">
+                                        <span><strong>Ghế an toàn cho trẻ em (ISOFIX)</strong></span>
+                                    </span>
+                                    <strong class="text-blue-700">+100.000đ/chuyến</strong>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BƯỚC 3: PHƯƠNG THỨC THANH TOÁN (VIETQR, VÍ MOMO/VNPAY, ĐẶT CỌC 30%) -->
+                    <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-5 sm:p-6">
+                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-3 mb-4">
+                            <span class="w-6 h-6 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center">3</span>
+                            CHỌN MỨC THANH TOÁN & PHƯƠNG THỨC THANH TOÁN
+                        </h2>
+
+                        <!-- Chọn Thanh toán cọc 30% hay Thanh toán 100% -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                            <label class="border-2 border-blue-600 bg-blue-50/50 rounded-xl p-3 cursor-pointer flex items-center gap-2.5">
+                                <input type="radio" name="chk_pay_ratio" value="30" checked onchange="recalculateCheckout()">
+                                <div class="text-xs">
+                                    <strong class="block text-slate-900">Đặt cọc giữ xe 30%</strong>
+                                    <span class="text-slate-600">70% còn lại thanh toán khi nhận xe</span>
+                                </div>
+                            </label>
+                            <label class="border-2 border-slate-200 rounded-xl p-3 cursor-pointer flex items-center gap-2.5">
+                                <input type="radio" name="chk_pay_ratio" value="100" onchange="recalculateCheckout()">
+                                <div class="text-xs">
+                                    <strong class="block text-slate-900">Thanh toán trọn gói 100%</strong>
+                                    <span class="text-emerald-600 font-bold">Tặng thêm 50km giới hạn miễn phí</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Phương thức thanh toán -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
+                            <button type="button" onclick="selectPaymentMethod('vietqr')" id="pay-btn-vietqr" class="pay-method-btn border-2 border-blue-600 bg-blue-50 p-3 rounded-xl text-left transition">
+                                <i class="fa-solid fa-qrcode text-blue-600 text-lg mb-1"></i>
+                                <strong class="block text-xs font-extrabold text-slate-900">Chuyển khoản VietQR</strong>
+                                <span class="text-[11px] text-slate-500">Xác nhận tự động 24/7</span>
+                            </button>
+                            <button type="button" onclick="selectPaymentMethod('momo')" id="pay-btn-momo" class="pay-method-btn border-2 border-slate-200 bg-white p-3 rounded-xl text-left transition">
+                                <i class="fa-solid fa-wallet text-pink-600 text-lg mb-1"></i>
+                                <strong class="block text-xs font-extrabold text-slate-900">Ví MoMo / VNPay</strong>
+                                <span class="text-[11px] text-slate-500">Quét mã ví điện tử</span>
+                            </button>
+                            <button type="button" onclick="selectPaymentMethod('cash')" id="pay-btn-cash" class="pay-method-btn border-2 border-slate-200 bg-white p-3 rounded-xl text-left transition">
+                                <i class="fa-solid fa-money-bill-wave text-emerald-600 text-lg mb-1"></i>
+                                <strong class="block text-xs font-extrabold text-slate-900">Tiền mặt tại bãi xe</strong>
+                                <span class="text-[11px] text-slate-500">Giữ chỗ trong 2 giờ</span>
+                            </button>
+                        </div>
+
+                        <!-- Khung hiển thị mã QR trực quan -->
+                        <div id="vietqr-preview-box" class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row items-center gap-4">
+                            <div class="w-32 h-32 bg-white p-2 rounded-lg border border-slate-300 shrink-0 flex flex-col items-center justify-center">
+                                <!-- Mã QR SVG minh họa sắc nét -->
+                                <svg viewBox="0 0 100 100" class="w-full h-full text-slate-900">
+                                    <path fill="currentColor" d="M10 10h25v25H10zM15 15v15h15V15zM20 20h5v5h-5zM65 10h25v25H65zM70 15v15h15V15zM75 20h5v5h-5zM10 65h25v25H10zM15 70v15h15V70zM20 75h5v5h-5zM45 10h10v10H45zM45 30h15v5H45zM40 45h20v15H40zM70 45h20v10H70zM45 70h15v20H45zM70 65h10v15H70zM85 75h5v15h-5z"/>
+                                </svg>
+                            </div>
+                            <div class="text-xs space-y-1.5 flex-grow">
+                                <span class="inline-block bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">VIETQR NAPAS 247</span>
+                                <p class="text-slate-600">Ngân hàng: <strong class="text-slate-900">Vietcombank - CN TP.HCM</strong></p>
+                                <p class="text-slate-600">Chủ tài khoản: <strong class="text-slate-900">CONG TY TNHH VCAR RENTAL</strong></p>
+                                <p class="text-slate-600">Số tài khoản: <strong class="font-mono text-blue-700 text-sm">1029384756</strong></p>
+                                <p class="text-slate-600">Nội dung CK: <strong id="qr-transfer-note" class="bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-mono">VCAR DATXE</strong></p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- CỘT PHẢI (5/12): TÓM TẮT ĐƠN ĐẶT XE, MÃ GIẢM GIÁ & XÁC NHẬN THANH TOÁN -->
+                <div class="lg:col-span-5 lg:sticky lg:top-28 space-y-4">
+                    <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-5 sm:p-6 shadow-md">
+                        <h2 class="text-base font-extrabold text-slate-900 uppercase border-b border-slate-200 pb-3 mb-4">
+                            TÓM TẮT ĐƠN ĐẶT XE & CHI PHÍ
+                        </h2>
+
+                        <!-- Thông tin xe đang đặt -->
+                        <div class="flex items-center gap-3.5 pb-4 mb-4 border-b border-slate-200">
+                            <img 
+                                id="chk-summary-img" 
+                                src="asset/image/vf8-1.jpg" 
+                                alt="Xe đặt thuê" 
+                                class="w-24 h-16 object-cover rounded-lg border border-slate-300 shrink-0"
+                            >
+                            <div>
+                                <h3 id="chk-summary-name" class="font-extrabold text-slate-900 text-sm sm:text-base">VinFast VF8 Eco 2025</h3>
+                                <p id="chk-summary-specs" class="text-xs text-slate-500">5 chỗ • Số tự động • Điện</p>
+                                <span id="chk-summary-mode-badge" class="inline-block mt-1 bg-blue-100 text-blue-700 text-[11px] font-bold px-2 py-0.5 rounded">
+                                    Thuê Tự Lái
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Ô nhập mã giảm giá -->
+                        <div class="mb-4">
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Mã khuyến mãi (Thử nhập: <code class="text-blue-600 font-bold">THUEXE10</code>)</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="chk-promo-input" placeholder="Nhập mã giảm giá..." class="flex-grow border border-slate-300 rounded-lg px-3 py-2 text-xs sm:text-sm uppercase font-bold">
+                                <button type="button" onclick="applyPromoCode()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-lg text-xs transition">
+                                    Áp dụng
+                                </button>
+                            </div>
+                            <p id="chk-promo-msg" class="text-[11px] mt-1 hidden"></p>
+                        </div>
+
+                        <!-- Bảng tính chi tiết -->
+                        <div class="space-y-2.5 text-xs sm:text-sm border-b border-slate-200 pb-4 mb-4">
+                            <div class="flex justify-between text-slate-600">
+                                <span>Đơn giá thuê (<span id="sum-unit-label">Tự lái</span>):</span>
+                                <strong id="sum-unit-price" class="text-slate-900">950.000đ/ngày</strong>
+                            </div>
+                            <div class="flex justify-between text-slate-600">
+                                <span>Số ngày thuê:</span>
+                                <strong id="sum-days" class="text-slate-900">2 ngày</strong>
+                            </div>
+                            <div class="flex justify-between text-slate-600">
+                                <span>Bảo hiểm thân vỏ tiêu chuẩn:</span>
+                                <strong class="text-emerald-600">Miễn phí (Đã gồm)</strong>
+                            </div>
+                            <div class="flex justify-between text-slate-600">
+                                <span>Phí giao xe & Dịch vụ cộng thêm:</span>
+                                <strong id="sum-addons" class="text-slate-900">0đ</strong>
+                            </div>
+                            <div class="flex justify-between text-emerald-600">
+                                <span>Giảm giá khuyến mãi:</span>
+                                <strong id="sum-discount">-0đ</strong>
+                            </div>
+                        </div>
+
+                        <!-- Tổng tiền & Tiền cọc cần thanh toán -->
+                        <div class="space-y-2 mb-5">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-700 text-sm">TỔNG CỘNG HỢP ĐỒNG:</span>
+                                <strong id="sum-total" class="text-xl font-black text-slate-900">1.900.000đ</strong>
+                            </div>
+                            <div class="p-3 rounded-xl bg-amber-50 border border-amber-300 flex justify-between items-center">
+                                <div>
+                                    <span class="block text-xs font-extrabold text-amber-900 uppercase">CẦN THANH TOÁN NGAY:</span>
+                                    <span id="sum-pay-note" class="text-[11px] text-amber-800">Đặt cọc 30% giữ xe</span>
+                                </div>
+                                <strong id="sum-pay-now" class="text-xl font-black text-rose-600">570.000đ</strong>
+                            </div>
+                        </div>
+
+                        <label class="flex items-start gap-2 text-xs text-slate-600 mb-4 cursor-pointer">
+                            <input type="checkbox" id="chk-agree-policy" checked class="mt-0.5 rounded text-blue-600">
+                            <span>Tôi đã đọc và đồng ý với <strong>Chính sách cho thuê xe, giới hạn 300km/ngày, phí phụ thu quá giờ/quá km</strong> của VCar Rental.</span>
+                        </label>
+
+                        <button onclick="submitBookingOrder()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-5 rounded-xl text-sm sm:text-base shadow-lg transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-shield-check"></i>
+                            <span>XÁC NHẬN ĐẶT XE & THANH TOÁN</span>
+                        </button>
+                    </div>
+
+                    <!-- Lịch sử đơn đặt xe vừa tạo -->
+                    <div class="wf-box border-2 border-slate-800 rounded-xl bg-white p-4">
+                        <h3 class="text-xs font-extrabold uppercase text-slate-600 mb-2 flex items-center justify-between">
+                            <span><i class="fa-solid fa-clock-rotate-left mr-1 text-blue-600"></i>Đơn đặt xe gần đây của bạn</span>
+                        </h3>
+                        <div id="recent-bookings-list" class="space-y-2 text-xs text-slate-600">
+                            <p class="text-slate-400 italic">Chưa có đơn đặt xe mới trong phiên này.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- FOOTER (Bám sát khối FOOTER lớn cuối trang trên cả 3 bản thiết kế)  -->
+    <!-- =================================================================== -->
+    <footer class="max-w-7xl w-full mx-auto px-3 sm:px-6 pb-6 mt-4">
+        <div class="wf-box border-2 border-slate-800 rounded-xl bg-slate-900 text-slate-300 p-6 sm:p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pb-6 border-b border-slate-800">
+                <!-- Cột 1 -->
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded bg-blue-600 text-white flex items-center justify-center font-black">
+                            <i class="fa-solid fa-car-side"></i>
+                        </div>
+                        <span class="font-extrabold text-lg text-white">VCAR RENTAL</span>
+                    </div>
+                    <p class="text-xs text-slate-400 leading-relaxed mb-3">
+                        Hệ thống cho thuê xe tự lái & có tài xế uy tín. Toàn bộ hình ảnh xe được quản lý trực tiếp trong thư mục <code class="text-amber-400">asset/image</code> theo đúng cấu trúc dự án.
+                    </p>
+                    <div class="text-xs text-slate-400 space-y-1">
+                        <p><i class="fa-solid fa-phone text-emerald-400 mr-2"></i>Hotline: 1900 8866 (24/7)</p>
+                        <p><i class="fa-solid fa-envelope text-sky-400 mr-2"></i>Email: cskh@vcarrental.vn</p>
+                    </div>
+                </div>
+
+                <!-- Cột 2 -->
+                <div>
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-white mb-3">Sơ đồ trang (Theo Bản Vẽ)</h3>
+                    <ul class="space-y-2 text-xs">
+                        <li><button onclick="navigateTo('home')" class="hover:text-white transition">• Trang Chủ (Banner & 8 Xe Nổi Bật)</button></li>
+                        <li><button onclick="navigateTo('cars')" class="hover:text-white transition">• Danh Sách Xe (Lưới 12 Card Xe)</button></li>
+                        <li><button onclick="navigateTo('detail')" class="hover:text-white transition">• Chi Tiết Xe (5 Ảnh Nhỏ & Chính Sách Phụ Thu)</button></li>
+                        <li><button onclick="navigateTo('about')" class="hover:text-white transition">• Giới Thiệu (Kèm Bản Đồ Thu Nhỏ Bãi Xe)</button></li>
+                        <li><button onclick="navigateTo('contact')" class="hover:text-white transition">• Liên Hệ & Hỗ Trợ 24/7</button></li>
+                        <li><button onclick="navigateTo('checkout')" class="text-emerald-400 font-bold hover:underline">• Trang Thanh Toán & Đặt Xe</button></li>
+                    </ul>
+                </div>
+
+                <!-- Cột 3 -->
+                <div>
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-white mb-3">Chính sách cho thuê</h3>
+                    <ul class="space-y-2 text-xs text-slate-400">
+                        <li>• Bảo hiểm thân vỏ 2 chiều mọi dòng xe</li>
+                        <li>• Giới hạn quãng đường: 300 km/ngày</li>
+                        <li>• Phụ thu quá km: 3.000đ - 5.000đ/km</li>
+                        <li>• Phụ thu trả xe trễ: 100.000đ/giờ</li>
+                        <li>• Thủ tục: CCCD gắn chip + GPLX B1/B2</li>
+                    </ul>
+                </div>
+
+                <!-- Cột 4 -->
+                <div>
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-white mb-3">Đăng ký nhận mã giảm giá</h3>
+                    <p class="text-xs text-slate-400 mb-3">Nhận thông báo ưu đãi giảm 20% dịp cuối tuần và lễ Tết.</p>
+                    <div class="flex gap-1.5 mb-3">
+                        <input type="email" placeholder="Nhập email của bạn..." class="bg-slate-800 border border-slate-700 rounded px-3 py-2 text-xs text-white w-full focus:outline-none">
+                        <button onclick="showToast('Đã đăng ký nhận bản tin khuyến mãi thành công!', 'success')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-2 rounded text-xs shrink-0">Gửi</button>
+                    </div>
+                    <p class="text-[11px] text-slate-500">Chấp nhận thanh toán: VietQR, MoMo, VNPay, Visa/MasterCard.</p>
+                </div>
+            </div>
+
+            <div class="pt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                <span>© 2026 FOOTER - VCAR RENTAL VIETNAM. Thiết kế chuẩn theo bản vẽ Wireframe.</span>
+                <span>Thư mục ảnh mặc định: <code class="text-slate-400">asset/image/</code></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =================================================================== -->
+    <!-- MODAL 1: FORM LOGIN / ĐĂNG KÝ THÀNH VIÊN (Mở khi bấm nút LOGIN)     -->
+    <!-- =================================================================== -->
+    <div id="login-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="wf-box border-2 border-slate-800 bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-[fadeIn_0.2s_ease-in-out]">
+            
+            <!-- Header Modal -->
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-user-shield text-blue-400 text-lg"></i>
+                    <h3 class="font-extrabold text-base uppercase tracking-wide">Tài Khoản VCar Rental</h3>
+                </div>
+                <button onclick="closeLoginModal()" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Tabs chuyển đổi Đăng nhập / Đăng ký -->
+            <div class="grid grid-cols-2 border-b border-slate-200 bg-slate-100">
+                <button onclick="switchAuthTab('login')" id="auth-tab-login" class="py-3 font-extrabold text-xs sm:text-sm uppercase border-b-2 border-blue-600 bg-white text-blue-600">
+                    Đăng Nhập
+                </button>
+                <button onclick="switchAuthTab('register')" id="auth-tab-register" class="py-3 font-extrabold text-xs sm:text-sm uppercase text-slate-500 hover:text-slate-800">
+                    Đăng Ký Mới
+                </button>
+            </div>
+
+            <div class="p-6">
+                <!-- FORM ĐĂNG NHẬP -->
+                <form id="form-login" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Số điện thoại hoặc Email *</label>
+                        <div class="relative">
+                            <i class="fa-regular fa-user absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                            <input type="text" id="login-username" required value="khachhang@vcar.vn" placeholder="Nhập SĐT hoặc Email..." class="w-full border border-slate-300 rounded-lg pl-9 pr-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mật khẩu *</label>
+                        <div class="relative">
+                            <i class="fa-solid fa-lock absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                            <input type="password" id="login-password" required value="123456" placeholder="••••••••" class="w-full border border-slate-300 rounded-lg pl-9 pr-3.5 py-2.5 text-sm focus:outline-none focus:border-blue-600">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between text-xs">
+                        <label class="flex items-center gap-1.5 text-slate-600 cursor-pointer">
+                            <input type="checkbox" checked class="rounded text-blue-600"> Ghi nhớ đăng nhập
+                        </label>
+                        <button type="button" onclick="showToast('Mã khôi phục mật khẩu đã được gửi về SMS/Email của bạn!', 'info')" class="text-blue-600 font-semibold hover:underline">Quên mật khẩu?</button>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-3 rounded-xl text-sm transition shadow">
+                        ĐĂNG NHẬP NGAY
+                    </button>
+                </form>
+
+                <!-- FORM ĐĂNG KÝ -->
+                <form id="form-register" onsubmit="handleRegisterSubmit(event)" class="space-y-3.5 hidden">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Họ và tên *</label>
+                        <input type="text" id="reg-fullname" required placeholder="Nguyễn Văn A" class="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Số điện thoại *</label>
+                            <input type="tel" id="reg-phone" required placeholder="0909xxxxxx" class="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Số GPLX (nếu có)</label>
+                            <input type="text" id="reg-gplx" placeholder="Hạng B1/B2" class="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email *</label>
+                        <input type="email" id="reg-email" required placeholder="email@domain.com" class="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mật khẩu tạo mới *</label>
+                        <input type="password" id="reg-password" required placeholder="Tối thiểu 6 ký tự" class="w-full border border-slate-300 rounded-lg px-3.5 py-2 text-sm">
+                    </div>
+                    <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl text-sm transition shadow">
+                        TẠO TÀI KHOẢN THÀNH VIÊN
+                    </button>
+                </form>
+
+                <div class="mt-4 pt-4 border-t border-slate-200 text-center">
+                    <p class="text-[11px] text-slate-500">Đăng nhập giúp tự động điền thông tin GPLX và tích lũy 5% điểm thưởng cho mỗi chuyến thuê xe.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MODAL 2: DANH SÁCH TÊN FILE ẢNH TRONG THƯ MỤC asset/image/          -->
+    <!-- =================================================================== -->
+    <div id="asset-guide-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border-2 border-slate-800 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl">
+            <div class="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
+                <h3 class="font-extrabold text-sm sm:text-base flex items-center gap-2">
+                    <i class="fa-solid fa-folder-tree text-amber-400"></i>
+                    Cấu Trúc Thư Mục Ảnh `asset/image/` Trong Code
+                </h3>
+                <button onclick="closeAssetGuideModal()" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 max-h-[75vh] overflow-y-auto text-xs sm:text-sm space-y-3">
+                <p class="text-slate-600">
+                    Toàn bộ thẻ <code class="bg-slate-100 px-1.5 py-0.5 rounded font-bold">&lt;img src="asset/image/..."&gt;</code> đã được trỏ trực tiếp vào thư mục <strong>asset/image/</strong>. Khi bạn đặt file ảnh vào đúng thư mục dự án trên máy, web sẽ hiển thị bộ ảnh của bạn (và tự động hiển thị ảnh dự phòng sắc nét nếu file nào chưa có):
+                </p>
+                <div class="bg-slate-900 text-emerald-400 font-mono text-xs p-4 rounded-xl overflow-x-auto leading-relaxed">
+                    project-folder/<br>
+                    ├── index.html<br>
+                    └── asset/<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;└── image/<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── banner.jpg &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Ảnh Banner Trang Chủ)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── baixe.jpg &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Ảnh Bãi Xe Trang Giới Thiệu)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── xe1.jpg ... xe12.jpg (Ảnh đại diện 12 xe trong Danh Sách Xe)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── xe1-1.jpg ... xe1-5.jpg (5 góc ảnh chi tiết của từng xe)
+                </div>
+                <p class="text-xs text-slate-500">
+                    Bạn có thể đổi tên ảnh trong mảng <code>CARS_DATA</code> ở phần <code>&lt;script&gt;</code> cuối file bất kỳ lúc nào.
+                </p>
+                <div class="text-right pt-2">
+                    <button onclick="closeAssetGuideModal()" class="bg-blue-600 text-white font-bold px-5 py-2 rounded-lg">Đã hiểu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MODAL 3: HỢP ĐỒNG THUÊ XE ĐIỆN TỬ / XÁC NHẬN ĐẶT XE THÀNH CÔNG      -->
+    <!-- =================================================================== -->
+    <div id="contract-modal" class="fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white border-2 border-slate-800 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl">
+            <div class="bg-emerald-700 text-white px-6 py-4 flex items-center justify-between">
+                <h3 id="contract-modal-title" class="font-extrabold text-sm sm:text-base flex items-center gap-2">
+                    <i class="fa-solid fa-file-signature"></i>
+                    HỢP ĐỒNG THUÊ XE & BIÊN NHẬN ĐẶT XE
+                </h3>
+                <button onclick="closeContractModal()" class="text-white/80 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="contract-modal-body" class="p-6 max-h-[75vh] overflow-y-auto text-xs sm:text-sm space-y-4">
+                <!-- Nội dung hợp đồng hoặc phiếu xác nhận đặt xe thành công -->
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+    <!-- =================================================================== -->
+    <!-- JAVASCRIPT LOGIC TOÀN BỘ HỆ THỐNG WEBSITE CHO THUÊ XE               -->
+    <!-- =================================================================== -->
+    <script>
+        // =================================================================
+        // 1. DỮ LIỆU 12 DÒNG XE (Tất cả ảnh đều lấy từ thư mục asset/image/)
+        // =================================================================
+        const CARS_DATA = [
+            {
+                id: 1,
+                name: "VinFast VF8 Eco 2025",
+                brand: "VinFast",
+                seats: 5,
+                transmission: "Số tự động",
+                fuel: "Điện",
+                consumption: "420 km/lần sạc",
+                year: "2025",
+                plate: "51K-889.68",
+                priceSelf: 950000,
+                priceDriver: 1450000,
+                kmLimit: 300,
+                overKmFee: "4.000đ/km",
+                lateHourFee: "100.000đ/giờ",
+                featured: true,
+                // Đường dẫn chính xác trong thư mục asset/image/
+                image: "asset/image/xe1.jpg",
+                gallery: [
+                    "asset/image/xe1-1.jpg",
+                    "asset/image/xe1-2.jpg",
+                    "asset/image/xe1-3.jpg",
+                    "asset/image/xe1-4.jpg",
+                    "asset/image/xe1-5.jpg"
+                ],
+                // Ảnh dự phòng trường hợp máy người dùng chưa chép file vào asset/image
+                fallback: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "VinFast VF8 Eco 2025 là dòng SUV điện 5 chỗ rộng rãi, vận hành êm ái không tiếng ồn, tích hợp gói hỗ trợ lái thông minh ADAS, màn hình giải trí 15.6 inch và cửa sổ trời toàn cảnh.",
+                options: ["Camera 360 độ", "Trợ lý ảo Vivi", "Apple CarPlay", "Cảnh báo lệch làn", "Cửa sổ trời", "Sạc nhanh toàn quốc", "6 Túi khí", "Định vị GPS", "Thẻ ePass"]
+            },
+            {
+                id: 2,
+                name: "Mitsubishi Xpander Cross 2025",
+                brand: "Mitsubishi",
+                seats: 7,
+                transmission: "Số tự động",
+                fuel: "Xăng",
+                consumption: "6.8L / 100km",
+                year: "2025",
+                plate: "51K-452.19",
+                priceSelf: 800000,
+                priceDriver: 1300000,
+                kmLimit: 300,
+                overKmFee: "4.000đ/km",
+                lateHourFee: "100.000đ/giờ",
+                featured: true,
+                image: "asset/image/xe2.jpg",
+                gallery: [
+                    "asset/image/xe2-1.jpg",
+                    "asset/image/xe2-2.jpg",
+                    "asset/image/xe2-3.jpg",
+                    "asset/image/xe2-4.jpg",
+                    "asset/image/xe2-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Mẫu MPV 7 chỗ quốc dân cho gia đình đi du lịch hoặc về quê. Gầm cao 225mm vượt mọi địa hình, điều hòa 2 dàn lạnh cực mát, hàng ghế 3 gập phẳng linh hoạt.",
+                options: ["Camera lùi HD", "Cảm biến lùi", "Màn hình Android 9 inch", "Cruise Control", "Phanh tay điện tử", "Giữ phanh Auto Hold", "Ghế da kháng nhiệt", "Định vị GPS", "Bluetooth"]
+            },
+            {
+                id: 3,
+                name: "Mazda 3 Luxury Sedan 2024",
+                brand: "Mazda",
+                seats: 5,
+                transmission: "Số tự động",
+                fuel: "Xăng",
+                consumption: "6.2L / 100km",
+                year: "2024",
+                plate: "51K-771.05",
+                priceSelf: 850000,
+                priceDriver: 1350000,
+                kmLimit: 300,
+                overKmFee: "4.000đ/km",
+                lateHourFee: "100.000đ/giờ",
+                featured: true,
+                image: "asset/image/xe3.jpg",
+                gallery: [
+                    "asset/image/xe3-1.jpg",
+                    "asset/image/xe3-2.jpg",
+                    "asset/image/xe3-3.jpg",
+                    "asset/image/xe3-4.jpg",
+                    "asset/image/xe3-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Thiết kế KODO sang trọng, lịch lãm phù hợp đi công tác, gặp đối tác hoặc rước dâu. Nội thất bọc da cao cấp, màn hình HUD hiển thị tốc độ trên kính lái.",
+                options: ["Màn hình HUD kính lái", "Cửa sổ trời", "Ghế chỉnh điện nhớ vị trí", "Apple CarPlay", "Lẫy chuyển số vô lăng", "7 Túi khí an toàn", "Camera hành trình", "Cảm biến va chạm"]
+            },
+            {
+                id: 4,
+                name: "VinFast VF3 Mini SUV 2025",
+                brand: "VinFast",
+                seats: 4,
+                transmission: "Số tự động",
+                fuel: "Điện",
+                consumption: "210 km/lần sạc",
+                year: "2025",
+                plate: "51K-993.88",
+                priceSelf: 500000,
+                priceDriver: 950000,
+                kmLimit: 250,
+                overKmFee: "3.000đ/km",
+                lateHourFee: "80.000đ/giờ",
+                featured: true,
+                image: "asset/image/xe4.jpg",
+                gallery: [
+                    "asset/image/xe4-1.jpg",
+                    "asset/image/xe4-2.jpg",
+                    "asset/image/xe4-3.jpg",
+                    "asset/image/xe4-4.jpg",
+                    "asset/image/xe4-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Mẫu xe điện mini 4 chỗ cá tính, nhỏ gọn cực dễ xoay trở và đỗ xe trong phố đông. Chi phí thuê siêu tiết kiệm chỉ 500.000đ/ngày, miễn phí sạc tại trạm V-Green.",
+                options: ["Màn hình cảm ứng 10 inch", "Camera lùi", "Cảm biến đỗ xe", "Phanh ABS", "Kết nối Bluetooth", "Sạc nhanh 36 phút", "Định vị GPS", "Miễn phí sạc pin"]
+            },
+            {
+                id: 5,
+                name: "Toyota Veloz Cross Top 2024",
+                brand: "Toyota",
+                seats: 7,
+                transmission: "Số tự động",
+                fuel: "Xăng",
+                consumption: "6.3L / 100km",
+                year: "2024",
+                plate: "64A-182.99",
+                priceSelf: 850000,
+                priceDriver: 1350000,
+                kmLimit: 300,
+                overKmFee: "4.000đ/km",
+                lateHourFee: "100.000đ/giờ",
+                featured: true,
+                image: "asset/image/xe5.jpg",
+                gallery: [
+                    "asset/image/xe5-1.jpg",
+                    "asset/image/xe5-2.jpg",
+                    "asset/image/xe5-3.jpg",
+                    "asset/image/xe5-4.jpg",
+                    "asset/image/xe5-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Bản cao cấp nhất Toyota Veloz Cross Top với gói an toàn Toyota Safety Sense, camera 360 độ toàn cảnh, sạc không dây và chế độ gập ghế Sofa độc đáo.",
+                options: ["Camera 360 độ", "Cảnh báo điểm mù BSM", "Sạc không dây", "Toyota Safety Sense", "6 Túi khí", "Chế độ ghế Sofa", "Màn hình 9 inch", "Thẻ VETC"]
+            },
+            {
+                id: 6,
+                name: "Honda City RS Sensing 2025",
+                brand: "Honda",
+                seats: 5,
+                transmission: "Số tự động",
+                fuel: "Xăng",
+                consumption: "5.6L / 100km",
+                year: "2025",
+                plate: "51K-612.34",
+                priceSelf: 700000,
+                priceDriver: 1200000,
+                kmLimit: 300,
+                overKmFee: "3.500đ/km",
+                lateHourFee: "100.000đ/giờ",
+                featured: true,
+                image: "asset/image/xe6.jpg",
+                gallery: [
+                    "asset/image/xe6-1.jpg",
+                    "asset/image/xe6-2.jpg",
+                    "asset/image/xe6-3.jpg",
+                    "asset/image/xe6-4.jpg",
+                    "asset/image/xe6-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Sedan hạng B thể thao mạnh mẽ nhất phân khúc, hàng ghế sau cực kỳ rộng rãi, trang bị gói an toàn Honda Sensing hỗ trợ giữ làn và phanh giảm thiểu va chạm.",
+                options: ["Honda Sensing", "Đề nổ từ xa", "Lẫy chuyển số", "Apple CarPlay/Android Auto", "Camera hành trình", "Cruise Control thích ứng", "8 Loa âm thanh", "Ghế da lộn RS"]
+            },
+            {
+                id: 7,
+                name: "Ford Everest Titanium 2025",
+                brand: "Ford",
+                seats: 7,
+                transmission: "Số tự động",
+                fuel: "Dầu",
+                consumption: "7.5L Dầu / 100km",
+                year: "2025",
+                plate: "51K-999.12",
+                priceSelf: 1350000,
+                priceDriver: 1850000,
+                kmLimit: 300,
+                overKmFee: "5.000đ/km",
+                lateHourFee: "150.000đ/giờ",
+                featured: true,
+                image: "asset/image/xe7.jpg",
+                gallery: [
+                    "asset/image/xe7-1.jpg",
+                    "asset/image/xe7-2.jpg",
+                    "asset/image/xe7-3.jpg",
+                    "asset/image/xe7-4.jpg",
+                    "asset/image/xe7-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "SUV 7 chỗ máy dầu cơ bắp Mỹ, cách âm tuyệt hảo, cửa sổ trời toàn cảnh Panorama, màn hình dọc 12 inch hiện đại, cực kỳ tiết kiệm nhiên liệu cho những chuyến xuyên Việt.",
+                options: ["Cửa sổ trời Panorama", "Camera 360 độ", "Hỗ trợ đỗ xe tự động", "Màn hình dọc 12 inch", "Cốp điện rảnh tay", "Ghế da chỉnh điện 10 hướng", "7 Túi khí", "Cảm biến áp suất lốp"]
+            },
+            {
+                id: 8,
+                name: "Kia Carnival Signature 7 Chỗ",
+                brand: "Kia",
+                seats: 7,
+                transmission: "Số tự động",
+                fuel: "Dầu",
+                consumption: "7.2L Dầu / 100km",
+                year: "2025",
+                plate: "51K-868.86",
+                priceSelf: 1600000,
+                priceDriver: 2100000,
+                kmLimit: 300,
+                overKmFee: "5.000đ/km",
+                lateHourFee: "150.000đ/giờ",
+                featured: true,
+                image: "asset/image/xe8.jpg",
+                gallery: [
+                    "asset/image/xe8-1.jpg",
+                    "asset/image/xe8-2.jpg",
+                    "asset/image/xe8-3.jpg",
+                    "asset/image/xe8-4.jpg",
+                    "asset/image/xe8-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Chuyên cơ mặt đất Kia Carnival Signature với 2 ghế thương gia chỉnh điện có sưởi/làm mát và bệ đỡ bắp chân, cửa lùa điện tự động, loa Bose 12 loa đẳng cấp.",
+                options: ["Ghế thương gia VIP", "2 Cửa sổ trời", "Cửa lùa điện thông minh", "12 Loa Bose cao cấp", "Camera 360 độ", "Làm mát/sưởi ghế", "Rèm che nắng", "Sạc không dây"]
+            },
+            {
+                id: 9,
+                name: "Hyundai Accent AT Đặc Biệt",
+                brand: "Hyundai",
+                seats: 5,
+                transmission: "Số tự động",
+                fuel: "Xăng",
+                consumption: "5.8L / 100km",
+                year: "2024",
+                plate: "51K-334.21",
+                priceSelf: 650000,
+                priceDriver: 1150000,
+                kmLimit: 300,
+                overKmFee: "3.500đ/km",
+                lateHourFee: "100.000đ/giờ",
+                featured: false,
+                image: "asset/image/xe9.jpg",
+                gallery: [
+                    "asset/image/xe9-1.jpg",
+                    "asset/image/xe9-2.jpg",
+                    "asset/image/xe9-3.jpg",
+                    "asset/image/xe9-4.jpg",
+                    "asset/image/xe9-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Xe 5 chỗ bền bỉ, dễ lái, đầy đủ cửa sổ trời, làm mát ghế, bản đồ dẫn đường tiếng Việt độc quyền Hyundai.",
+                options: ["Cửa sổ trời", "Đề nổ từ xa", "Bản đồ dẫn đường", "Camera lùi", "Cảm biến áp suất lốp", "6 Túi khí", "Làm mát ghế trước", "Cốp thông minh"]
+            },
+            {
+                id: 10,
+                name: "Toyota Vios E MT (Số Sàn)",
+                brand: "Toyota",
+                seats: 5,
+                transmission: "Số sàn",
+                fuel: "Xăng",
+                consumption: "5.2L / 100km",
+                year: "2023",
+                plate: "64A-098.11",
+                priceSelf: 550000,
+                priceDriver: 1050000,
+                kmLimit: 300,
+                overKmFee: "3.000đ/km",
+                lateHourFee: "80.000đ/giờ",
+                featured: false,
+                image: "asset/image/xe10.jpg",
+                gallery: [
+                    "asset/image/xe10-1.jpg",
+                    "asset/image/xe10-2.jpg",
+                    "asset/image/xe10-3.jpg",
+                    "asset/image/xe10-4.jpg",
+                    "asset/image/xe10-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Lựa chọn kinh tế số 1 cho khách thích cảm giác lái số sàn hoặc bổ túc tay lái. Máy lạnh cực sâu, siêu tiết kiệm xăng chỉ hơn 5 lít/100km.",
+                options: ["Màn hình DVD", "Camera lùi", "Cảm biến lùi", "Kết nối Bluetooth", "Cân bằng điện tử", "Phanh ABS/EBD", "Camera hành trình", "Thẻ ePass"]
+            },
+            {
+                id: 11,
+                name: "Kia Morning GT-Line 4 Chỗ",
+                brand: "Kia",
+                seats: 4,
+                transmission: "Số tự động",
+                fuel: "Xăng",
+                consumption: "5.0L / 100km",
+                year: "2024",
+                plate: "51K-210.45",
+                priceSelf: 500000,
+                priceDriver: 950000,
+                kmLimit: 250,
+                overKmFee: "3.000đ/km",
+                lateHourFee: "80.000đ/giờ",
+                featured: false,
+                image: "asset/image/xe11.jpg",
+                gallery: [
+                    "asset/image/xe11-1.jpg",
+                    "asset/image/xe11-2.jpg",
+                    "asset/image/xe11-3.jpg",
+                    "asset/image/xe11-4.jpg",
+                    "asset/image/xe11-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1542282088-72c9c27ed0cd?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Hatchback 4 chỗ nhỏ gọn, thể thao, luồn lách hẻm nhỏ dễ dàng, tiết kiệm nhiên liệu tối đa.",
+                options: ["Số tự động dễ lái", "Camera lùi", "Màn hình giải trí", "Ghế da 2 tông màu", "Điều hòa tự động", "Phanh ABS", "Định vị GPS", "Cổng sạc USB"]
+            },
+            {
+                id: 12,
+                name: "Toyota Innova 2.0E Số Sàn 7 Chỗ",
+                brand: "Toyota",
+                seats: 7,
+                transmission: "Số sàn",
+                fuel: "Xăng",
+                consumption: "8.2L / 100km",
+                year: "2023",
+                plate: "51K-505.79",
+                priceSelf: 750000,
+                priceDriver: 1250000,
+                kmLimit: 300,
+                overKmFee: "4.000đ/km",
+                lateHourFee: "100.000đ/giờ",
+                featured: false,
+                image: "asset/image/xe12.jpg",
+                gallery: [
+                    "asset/image/xe12-1.jpg",
+                    "asset/image/xe12-2.jpg",
+                    "asset/image/xe12-3.jpg",
+                    "asset/image/xe12-4.jpg",
+                    "asset/image/xe12-5.jpg"
+                ],
+                fallback: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+                fallbackGallery: [
+                    "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=800&q=80",
+                    "https://images.unsplash.com/photo-1560958089-b8a1929cea89?auto=format&fit=crop&w=800&q=80"
+                ],
+                description: "Dòng xe 7 chỗ thực thụ rộng rãi nhất cho 7-8 người lớn cùng hành lý. Khung gầm rời chắc chắn, bền bỉ trên mọi cung đường đèo dốc.",
+                options: ["8 Chỗ ngồi rộng rãi", "2 Dàn lạnh độc lập", "Màn hình Android 4G", "Camera hành trình trước/sau", "Cảm biến lùi", "7 Túi khí", "Cân bằng điện tử", "Thẻ VETC"]
+            }
+        ];
+
+        // Dữ liệu các bãi xe trên Bản đồ thu nhỏ (Trang Giới thiệu)
+        const DEPOTS_DATA = [
+            {
+                name: "Bãi Xe Trung Tâm VCar (Quận 7 - TP.HCM)",
+                address: "Số 128 Nguyễn Thị Thập, Phường Bình Thuận, Quận 7, TP. Hồ Chí Minh",
+                lat: 10.7379,
+                lng: 106.7218,
+                coordsText: "10.7379° N, 106.7218° E",
+                carCount: "28 xe (4 chỗ, 5 chỗ, 7 chỗ, Xe điện)"
+            },
+            {
+                name: "Bãi Xe Chi Nhánh Vĩnh Long - Miền Tây",
+                address: "Đường Phạm Thái Bường, Phường 4, TP. Vĩnh Long, Tỉnh Vĩnh Long",
+                lat: 10.2537,
+                lng: 105.9722,
+                coordsText: "10.2537° N, 105.9722° E",
+                carCount: "18 xe (5 chỗ, 7 chỗ tự lái & có tài)"
+            },
+            {
+                name: "Bãi Xe Sân Bay Tân Sơn Nhất (Quận Tân Bình)",
+                address: "Số 45 Trường Sơn, Phường 2, Quận Tân Bình, TP. Hồ Chí Minh",
+                lat: 10.8132,
+                lng: 106.6625,
+                coordsText: "10.8132° N, 106.6625° E",
+                carCount: "22 xe (Giao nhận sảnh sân bay 24/7)"
+            }
+        ];
+
+        // State quản lý ứng dụng
+        let currentPage = 'home';
+        let selectedCarId = 1;
+        let selectedDetailImgIndex = 0;
+        let selectedRentalMode = 'self'; // 'self' hoặc 'driver'
+        let selectedPaymentMethod = 'vietqr';
+        let appliedPromoDiscountRate = 0; // 0.1 = 10%
+        let currentUser = null;
+        let bookingsHistory = [];
+        let leafletMap = null;
+        let leafletMarker = null;
+
+        // Hàm định dạng tiền tệ VNĐ
+        function formatVND(amount) {
+            return amount.toLocaleString('vi-VN') + 'đ';
+        }
+
+        // =================================================================
+        // 2. ĐIỀU HƯỚNG GIỮA CÁC TRANG (SPA NAVIGATION)
+        // =================================================================
+        function navigateTo(pageId) {
+            currentPage = pageId;
+            document.querySelectorAll('.page-section').forEach(sec => {
+                sec.classList.remove('active');
+            });
+            const target = document.getElementById('page-' + pageId);
+            if (target) {
+                target.classList.add('active');
+            }
+
+            // Cập nhật trạng thái active trên thanh 4 nút điều hướng
+            document.querySelectorAll('.nav-tab').forEach(btn => {
+                const nav = btn.getAttribute('data-nav');
+                if (nav === pageId || (pageId === 'detail' && nav === 'cars')) {
+                    btn.className = "nav-tab py-2.5 sm:py-3 px-2 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 bg-blue-600 text-white";
+                } else {
+                    btn.className = "nav-tab py-2.5 sm:py-3 px-2 text-xs sm:text-sm md:text-base font-bold uppercase tracking-wide transition flex items-center justify-center gap-2 bg-white text-slate-800 hover:bg-slate-100";
+                }
+            });
+
+            // Nếu mở trang Giới thiệu, khởi tạo hoặc làm mới kích thước Bản đồ thu nhỏ
+            if (pageId === 'about') {
+                setTimeout(() => {
+                    initOrRefreshDepotMap();
+                }, 150);
+            }
+
+            // Nếu mở trang Thanh toán, đồng bộ thông tin xe đang chọn
+            if (pageId === 'checkout') {
+                syncCheckoutPageWithSelectedCar();
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // =================================================================
+        // 3. RENDER TRANG CHỦ (8 CARD XE BO GÓC TRÒN NHƯ WIREFRAME)
+        // =================================================================
+        function renderHomeFeaturedCars() {
+            const container = document.getElementById('home-featured-grid');
+            const featuredCars = CARS_DATA.filter(c => c.featured).slice(0, 8);
+
+            container.innerHTML = featuredCars.map(car => `
+                <div class="wf-card-home bg-white border-2 border-slate-800 rounded-[26px] overflow-hidden shadow-sm hover:shadow-xl transition-all duration-200 flex flex-col justify-between group">
+                    <div>
+                        <!-- Ảnh xe lấy từ asset/image/ -->
+                        <div onclick="openCarDetail(${car.id})" class="relative h-44 overflow-hidden bg-slate-100 cursor-pointer border-b-2 border-slate-800">
+                            <img 
+                                src="${car.image}" 
+                                onerror="this.onerror=null; this.src='${car.fallback}';" 
+                                alt="${car.name}" 
+                                class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                            >
+                            <span class="absolute top-3 left-3 bg-slate-900/85 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase">
+                                ${car.seats} chỗ • ${car.fuel}
+                            </span>
+                            <span class="absolute bottom-2 right-2 bg-white/95 text-slate-800 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-300">
+                                ${car.image}
+                            </span>
+                        </div>
+
+                        <!-- Nội dung Card Xe -->
+                        <div class="p-4">
+                            <h3 onclick="openCarDetail(${car.id})" class="font-extrabold text-slate-900 text-base hover:text-blue-600 cursor-pointer line-clamp-1">
+                                ${car.name}
+                            </h3>
+                            <div class="flex flex-wrap items-center gap-1.5 mt-2 text-[11px] font-semibold text-slate-600">
+                                <span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200"><i class="fa-solid fa-gears text-blue-600 mr-1"></i>${car.transmission}</span>
+                                <span class="bg-slate-100 px-2 py-0.5 rounded border border-slate-200"><i class="fa-solid fa-shield-halved text-emerald-600 mr-1"></i>Bảo hiểm 2 chiều</span>
+                            </div>
+
+                            <!-- Giá tự lái & Giá có tài xế -->
+                            <div class="mt-3 pt-3 border-t border-slate-200 space-y-1 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-slate-500 font-medium">Giá tự lái:</span>
+                                    <strong class="text-sm font-black text-blue-600">${formatVND(car.priceSelf)}/ngày</strong>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-slate-500 font-medium">Có tài xế:</span>
+                                    <strong class="text-xs font-bold text-emerald-700">${formatVND(car.priceDriver)}/ngày</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nút thao tác -->
+                    <div class="px-4 pb-4 pt-1 grid grid-cols-2 gap-2">
+                        <button onclick="openCarDetail(${car.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-2 px-3 rounded-xl text-xs transition border border-slate-300">
+                            Chi tiết xe
+                        </button>
+                        <button onclick="quickBookCar(${car.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-xl text-xs transition shadow-sm">
+                            Đặt xe ngay
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // =================================================================
+        // 4. RENDER TRANG DANH SÁCH XE (12 CARD CHỮ NHẬT NHƯ WIREFRAME)
+        // =================================================================
+        function renderCarListPage() {
+            const searchKeyword = (document.getElementById('global-search-input').value || '').trim().toLowerCase();
+            const seatsFilter = document.getElementById('filter-seats').value;
+            const transFilter = document.getElementById('filter-transmission').value;
+            const fuelFilter = document.getElementById('filter-fuel').value;
+            const priceFilter = document.getElementById('filter-price').value;
+            const sortType = document.getElementById('filter-sort').value;
+
+            let filtered = CARS_DATA.filter(car => {
+                const matchKeyword = !searchKeyword || 
+                    car.name.toLowerCase().includes(searchKeyword) ||
+                    car.brand.toLowerCase().includes(searchKeyword) ||
+                    car.fuel.toLowerCase().includes(searchKeyword) ||
+                    car.transmission.toLowerCase().includes(searchKeyword) ||
+                    `${car.seats} chỗ`.includes(searchKeyword);
+
+                const matchSeats = seatsFilter === 'all' || String(car.seats) === seatsFilter;
+                const matchTrans = transFilter === 'all' || car.transmission === transFilter;
+                const matchFuel = fuelFilter === 'all' || car.fuel === fuelFilter;
+
+                let matchPrice = true;
+                if (priceFilter === 'under700') matchPrice = car.priceSelf < 700000;
+                else if (priceFilter === '700to1000') matchPrice = car.priceSelf >= 700000 && car.priceSelf <= 1000000;
+                else if (priceFilter === 'over1000') matchPrice = car.priceSelf > 1000000;
+
+                return matchKeyword && matchSeats && matchTrans && matchFuel && matchPrice;
+            });
+
+            if (sortType === 'price-asc') filtered.sort((a, b) => a.priceSelf - b.priceSelf);
+            else if (sortType === 'price-desc') filtered.sort((a, b) => b.priceSelf - a.priceSelf);
+            else if (sortType === 'seats-desc') filtered.sort((a, b) => b.seats - a.seats);
+
+            document.getElementById('car-list-count').textContent = `(${filtered.length} xe phù hợp)`;
+            const grid = document.getElementById('car-list-grid');
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full bg-white border-2 border-slate-800 rounded-lg p-10 text-center">
+                        <i class="fa-solid fa-car-Burst text-4xl text-slate-400 mb-3"></i>
+                        <h3 class="text-lg font-extrabold text-slate-800">Không tìm thấy dòng xe phù hợp với bộ lọc</h3>
+                        <p class="text-xs text-slate-500 mt-1 mb-4">Hãy thử xóa từ khóa tìm kiếm hoặc đặt lại bộ lọc để xem toàn bộ 12 dòng xe.</p>
+                        <button onclick="resetAllCarFilters()" class="bg-blue-600 text-white font-bold px-5 py-2.5 rounded-lg text-xs">Xem tất cả 12 xe</button>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(car => `
+                <div class="wf-card-list bg-white border-2 border-slate-800 rounded-md overflow-hidden shadow-sm hover:shadow-lg transition flex flex-col justify-between group">
+                    <div>
+                        <div onclick="openCarDetail(${car.id})" class="relative h-44 bg-slate-100 cursor-pointer border-b-2 border-slate-800 overflow-hidden">
+                            <img 
+                                src="${car.image}" 
+                                onerror="this.onerror=null; this.src='${car.fallback}';" 
+                                alt="${car.name}" 
+                                class="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                            >
+                            <div class="absolute top-2.5 left-2.5 bg-slate-900/90 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                                CARD XE #${car.id}
+                            </div>
+                            <div class="absolute top-2.5 right-2.5 bg-blue-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded">
+                                ${car.seats} Chỗ
+                            </div>
+                        </div>
+
+                        <div class="p-4">
+                            <div class="text-[11px] font-bold text-slate-400 uppercase">${car.brand} • Đời ${car.year}</div>
+                            <h3 onclick="openCarDetail(${car.id})" class="font-extrabold text-slate-900 text-base hover:text-blue-600 cursor-pointer mt-0.5 line-clamp-1">
+                                ${car.name}
+                            </h3>
+
+                            <div class="grid grid-cols-2 gap-1.5 my-2.5 text-[11px] text-slate-600 font-medium">
+                                <span class="bg-slate-50 border border-slate-200 px-2 py-1 rounded truncate"><i class="fa-solid fa-gears text-blue-600 mr-1"></i>${car.transmission}</span>
+                                <span class="bg-slate-50 border border-slate-200 px-2 py-1 rounded truncate"><i class="fa-solid fa-gas-pump text-emerald-600 mr-1"></i>${car.fuel}</span>
+                            </div>
+
+                            <div class="pt-2.5 border-t border-slate-200 space-y-1 text-xs">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-500">Tự lái:</span>
+                                    <strong class="text-base font-black text-rose-600">${formatVND(car.priceSelf)}<span class="text-[10px] font-normal text-slate-500">/ngày</span></strong>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-slate-500">Có tài xế:</span>
+                                    <strong class="text-xs font-bold text-slate-800">${formatVND(car.priceDriver)}/ngày</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-4 pb-4 grid grid-cols-2 gap-2">
+                        <button onclick="openCarDetail(${car.id})" class="border-2 border-slate-800 bg-white hover:bg-slate-100 text-slate-900 font-extrabold py-2 rounded text-xs transition">
+                            XEM CHI TIẾT
+                        </button>
+                        <button onclick="quickBookCar(${car.id})" class="border-2 border-slate-800 bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-2 rounded text-xs transition">
+                            ĐẶT XE
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Xử lý tìm kiếm trên KHUNG TÌM KIẾM XE ở Header
+        function handleGlobalSearch(val) {
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (val && val.trim().length > 0) {
+                clearBtn.classList.remove('hidden');
+                if (currentPage !== 'cars') {
+                    navigateTo('cars');
+                }
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+            renderCarListPage();
+        }
+
+        function clearGlobalSearch() {
+            document.getElementById('global-search-input').value = '';
+            document.getElementById('clear-search-btn').classList.add('hidden');
+            renderCarListPage();
+        }
+
+        function resetAllCarFilters() {
+            document.getElementById('global-search-input').value = '';
+            document.getElementById('clear-search-btn').classList.add('hidden');
+            document.getElementById('filter-seats').value = 'all';
+            document.getElementById('filter-transmission').value = 'all';
+            document.getElementById('filter-fuel').value = 'all';
+            document.getElementById('filter-price').value = 'all';
+            document.getElementById('filter-sort').value = 'default';
+            renderCarListPage();
+        }
+
+        function applyQuickBannerFilter() {
+            const seats = document.getElementById('quick-seats').value;
+            const fuel = document.getElementById('quick-fuel').value;
+            const mode = document.getElementById('quick-mode').value;
+
+            document.getElementById('filter-seats').value = seats;
+            document.getElementById('filter-fuel').value = fuel;
+            if (mode === 'self' || mode === 'driver') {
+                selectedRentalMode = mode;
+            }
+            navigateTo('cars');
+            renderCarListPage();
+            showToast('Đã lọc danh sách xe theo tiêu chí bạn chọn!', 'info');
+        }
+
+        // =================================================================
+        // 5. TRANG CHI TIẾT XE (ẢNH LỚN + 5 Ô ẢNH NHỎ + CHÍNH SÁCH PHỤ THU)
+        // =================================================================
+        function openCarDetail(carId) {
+            selectedCarId = carId;
+            selectedDetailImgIndex = 0;
+            const car = CARS_DATA.find(c => c.id === carId) || CARS_DATA[0];
+
+            // Cập nhật thông tin cơ bản
+            document.getElementById('detail-brand-badge').textContent = `${car.brand} • ĐỜI ${car.year}`;
+            document.getElementById('detail-car-name').textContent = car.name;
+            document.getElementById('detail-plate').textContent = `Biển số: ${car.plate}`;
+            document.getElementById('detail-seats').textContent = `${car.seats} chỗ ngồi`;
+            document.getElementById('detail-transmission').textContent = car.transmission;
+            document.getElementById('detail-fuel').textContent = car.fuel;
+            document.getElementById('detail-consumption').textContent = car.consumption;
+
+            // Giá thuê
+            document.getElementById('detail-price-self').innerHTML = `${formatVND(car.priceSelf)}<span class="text-xs font-normal text-slate-500">/ngày</span>`;
+            document.getElementById('detail-price-driver').innerHTML = `${formatVND(car.priceDriver)}<span class="text-xs font-normal text-slate-500">/ngày</span>`;
+
+            // Mô tả & Thông số
+            document.getElementById('detail-description').textContent = car.description;
+            document.getElementById('spec-year').textContent = `Đời mới ${car.year}`;
+            document.getElementById('spec-trunk').textContent = car.seats === 7 ? '5 Vali cỡ lớn + Khoang gập phẳng' : '3 Vali tiêu chuẩn + Balo';
+
+            // Danh sách Options
+            const optionsGrid = document.getElementById('detail-options-grid');
+            optionsGrid.innerHTML = car.options.map(opt => `
+                <div class="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800">
+                    <i class="fa-solid fa-circle-check text-blue-600"></i>
+                    <span>${opt}</span>
+                </div>
+            `).join('');
+
+            // Chính sách giới hạn km & phụ thu
+            document.getElementById('policy-km-limit').textContent = `${car.kmLimit} km / ngày`;
+            document.getElementById('policy-over-km').textContent = car.overKmFee;
+            document.getElementById('policy-late-hour').textContent = car.lateHourFee;
+
+            // Render ảnh chính + 5 ô ảnh nhỏ bên dưới
+            renderDetailGallery();
+            selectDetailRentalMode(selectedRentalMode);
+            updateDetailQuickEstimate();
+            navigateTo('detail');
+        }
+
+        function renderDetailGallery() {
+            const car = CARS_DATA.find(c => c.id === selectedCarId) || CARS_DATA[0];
+            const mainImg = document.getElementById('detail-main-img');
+            const currentSrc = car.gallery[selectedDetailImgIndex] || car.image;
+            const currentFallback = car.fallbackGallery[selectedDetailImgIndex] || car.fallback;
+
+            mainImg.onerror = function() {
+                this.onerror = null;
+                this.src = currentFallback;
+            };
+            mainImg.src = currentSrc;
+
+            document.getElementById('detail-asset-path-label').textContent = currentSrc;
+            const captions = [
+                "Góc chụp 1/5 - Ngoại thất góc chính diện",
+                "Góc chụp 2/5 - Khoang lái & Vô lăng trang bị",
+                "Góc chụp 3/5 - Hàng ghế hành khách bọc da",
+                "Góc chụp 4/5 - Góc nhìn ngang thân xe",
+                "Góc chụp 5/5 - Khoang hành lý & Đuôi xe"
+            ];
+            document.getElementById('detail-img-caption').textContent = `${captions[selectedDetailImgIndex]} (${currentSrc})`;
+
+            // Render 5 ô thumbnail đúng thiết kế chi tiết xe.png
+            const thumbRow = document.getElementById('detail-thumbnails-row');
+            thumbRow.innerHTML = car.gallery.map((imgSrc, idx) => {
+                const isActive = idx === selectedDetailImgIndex;
+                const fallbackSrc = car.fallbackGallery[idx] || car.fallback;
+                return `
+                    <div onclick="selectDetailThumbnail(${idx})" class="cursor-pointer p-1.5 sm:p-2 transition relative ${isActive ? 'bg-blue-100 ring-2 ring-inset ring-blue-600' : 'bg-white hover:bg-slate-100'}">
+                        <img 
+                            src="${imgSrc}" 
+                            onerror="this.onerror=null; this.src='${fallbackSrc}';" 
+                            alt="Ảnh nhỏ ${idx + 1}" 
+                            class="w-full h-14 sm:h-20 object-cover rounded"
+                        >
+                        <span class="absolute bottom-2 right-2 bg-slate-900/80 text-white text-[10px] font-bold px-1.5 rounded">
+                            ${idx + 1}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectDetailThumbnail(idx) {
+            selectedDetailImgIndex = idx;
+            renderDetailGallery();
+        }
+
+        function prevDetailImage() {
+            selectedDetailImgIndex = (selectedDetailImgIndex - 1 + 5) % 5;
+            renderDetailGallery();
+        }
+
+        function nextDetailImage() {
+            selectedDetailImgIndex = (selectedDetailImgIndex + 1) % 5;
+            renderDetailGallery();
+        }
+
+        function selectDetailRentalMode(mode) {
+            selectedRentalMode = mode;
+            const cardSelf = document.getElementById('mode-card-self');
+            const cardDriver = document.getElementById('mode-card-driver');
+            const iconSelf = document.getElementById('check-icon-self');
+            const iconDriver = document.getElementById('check-icon-driver');
+
+            if (mode === 'self') {
+                cardSelf.className = "cursor-pointer border-2 border-blue-600 bg-blue-50/70 rounded-xl p-3.5 transition relative";
+                cardDriver.className = "cursor-pointer border-2 border-slate-200 hover:border-slate-300 bg-white rounded-xl p-3.5 transition relative";
+                iconSelf.className = "fa-solid fa-circle-check text-blue-600";
+                iconDriver.className = "fa-regular fa-circle text-slate-400";
+            } else {
+                cardDriver.className = "cursor-pointer border-2 border-emerald-600 bg-emerald-50/70 rounded-xl p-3.5 transition relative";
+                cardSelf.className = "cursor-pointer border-2 border-slate-200 hover:border-slate-300 bg-white rounded-xl p-3.5 transition relative";
+                iconDriver.className = "fa-solid fa-circle-check text-emerald-600";
+                iconSelf.className = "fa-regular fa-circle text-slate-400";
+            }
+            updateDetailQuickEstimate();
+        }
+
+        function calculateDaysBetween(startStr, endStr) {
+            const d1 = new Date(startStr);
+            const d2 = new Date(endStr);
+            const diff = Math.ceil((d2 - d1) / (1000 * 60 * 60 * 24));
+            return diff > 0 ? diff : 1;
+        }
+
+        function updateDetailQuickEstimate() {
+            const car = CARS_DATA.find(c => c.id === selectedCarId) || CARS_DATA[0];
+            const pDate = document.getElementById('detail-pickup-date').value;
+            const rDate = document.getElementById('detail-return-date').value;
+            const days = calculateDaysBetween(pDate, rDate);
+            const unitPrice = selectedRentalMode === 'self' ? car.priceSelf : car.priceDriver;
+
+            document.getElementById('detail-est-days').textContent = days;
+            document.getElementById('detail-est-total').textContent = formatVND(days * unitPrice);
+        }
+
+        function quickBookCar(carId) {
+            selectedCarId = carId;
+            selectedRentalMode = 'self';
+            navigateTo('checkout');
+        }
+
+        function proceedToCheckoutFromDetail() {
+            // Đồng bộ ngày từ trang Chi tiết sang trang Thanh toán
+            document.getElementById('chk-pickup-date').value = document.getElementById('detail-pickup-date').value;
+            document.getElementById('chk-return-date').value = document.getElementById('detail-return-date').value;
+            document.getElementById('chk-mode').value = selectedRentalMode;
+            navigateTo('checkout');
+        }
+
+        // =================================================================
+        // 6. BẢN ĐỒ THU NHỎ ĐỊNH VỊ BÃI XE (TRANG GIỚI THIỆU)
+        // =================================================================
+        function initOrRefreshDepotMap() {
+            if (!leafletMap) {
+                const defaultDepot = DEPOTS_DATA[0];
+                leafletMap = L.map('depot-mini-map').setView([defaultDepot.lat, defaultDepot.lng], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(leafletMap);
+
+                leafletMarker = L.marker([defaultDepot.lat, defaultDepot.lng]).addTo(leafletMap)
+                    .bindPopup(`<b>${defaultDepot.name}</b><br>${defaultDepot.address}`)
+                    .openPopup();
+            } else {
+                leafletMap.invalidateSize();
+            }
+        }
+
+        function focusDepotOnMap(depotIndex) {
+            const depot = DEPOTS_DATA[depotIndex] || DEPOTS_DATA[0];
+            document.getElementById('depot-title').textContent = depot.name;
+            document.getElementById('depot-address').innerHTML = `<i class="fa-solid fa-map-pin text-rose-600 mt-1"></i><span>${depot.address}</span>`;
+            document.getElementById('depot-coords').textContent = depot.coordsText;
+            document.getElementById('depot-car-count').textContent = depot.carCount;
+            document.getElementById('depot-gmaps-link').href = `https://www.google.com/maps?q=${depot.lat},${depot.lng}`;
+
+            // Đổi style nút chọn bãi xe
+            [0, 1, 2].forEach(i => {
+                const btn = document.getElementById('depot-btn-' + i);
+                if (i === depotIndex) {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white transition flex items-center gap-1.5";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition flex items-center gap-1.5";
+                }
+            });
+
+            if (leafletMap && leafletMarker) {
+                leafletMap.setView([depot.lat, depot.lng], 15, { animate: true });
+                leafletMarker.setLatLng([depot.lat, depot.lng])
+                    .bindPopup(`<b>${depot.name}</b><br>${depot.address}`)
+                    .openPopup();
+            }
+        }
+
+        // =================================================================
+        // 7. TRANG THANH TOÁN & TÍNH TOÁN HỢP ĐỒNG TỰ ĐỘNG
+        // =================================================================
+        function populateCheckoutCarDropdown() {
+            const select = document.getElementById('chk-car-select');
+            select.innerHTML = CARS_DATA.map(car => `
+                <option value="${car.id}">${car.name} — Tự lái: ${formatVND(car.priceSelf)}/ngày | Có tài: ${formatVND(car.priceDriver)}/ngày</option>
+            `).join('');
+        }
+
+        function syncCheckoutPageWithSelectedCar() {
+            document.getElementById('chk-car-select').value = selectedCarId;
+            document.getElementById('chk-mode').value = selectedRentalMode;
+            recalculateCheckout();
+        }
+
+        function handleCheckoutCarChange(newId) {
+            selectedCarId = parseInt(newId, 10);
+            recalculateCheckout();
+        }
+
+        function recalculateCheckout() {
+            const car = CARS_DATA.find(c => c.id === selectedCarId) || CARS_DATA[0];
+            const mode = document.getElementById('chk-mode').value;
+            selectedRentalMode = mode;
+
+            // Cập nhật thông tin tóm tắt xe bên cột phải
+            const sumImg = document.getElementById('chk-summary-img');
+            sumImg.onerror = function() {
+                this.onerror = null;
+                this.src = car.fallback;
+            };
+            sumImg.src = car.image;
+
+            document.getElementById('chk-summary-name').textContent = car.name;
+            document.getElementById('chk-summary-specs').textContent = `${car.seats} chỗ • ${car.transmission} • ${car.fuel}`;
+            document.getElementById('chk-summary-mode-badge').textContent = mode === 'self' ? 'Thuê Tự Lái' : 'Có Tài Xế Đưa Đón';
+
+            const pDate = document.getElementById('chk-pickup-date').value;
+            const rDate = document.getElementById('chk-return-date').value;
+            const days = calculateDaysBetween(pDate, rDate);
+
+            const unitPrice = mode === 'self' ? car.priceSelf : car.priceDriver;
+            const baseRent = unitPrice * days;
+
+            // Tính phí giao xe & dịch vụ cộng thêm
+            const deliveryRadio = document.querySelector('input[name="chk_delivery"]:checked');
+            const deliveryFee = (deliveryRadio && deliveryRadio.value === 'home') ? 150000 : 0;
+            const insFee = document.getElementById('addon-insurance').checked ? (100000 * days) : 0;
+            const babyFee = document.getElementById('addon-babyseat').checked ? 100000 : 0;
+            const totalAddons = deliveryFee + insFee + babyFee;
+
+            const subTotal = baseRent + totalAddons;
+            const discountAmount = Math.round(subTotal * appliedPromoDiscountRate);
+            const finalTotal = subTotal - discountAmount;
+
+            const payRatioRadio = document.querySelector('input[name="chk_pay_ratio"]:checked');
+            const payRatio = (payRatioRadio && payRatioRadio.value === '100') ? 1 : 0.3;
+            const payNowAmount = Math.round(finalTotal * payRatio);
+
+            document.getElementById('sum-unit-label').textContent = mode === 'self' ? 'Tự lái' : 'Có tài xế';
+            document.getElementById('sum-unit-price').textContent = `${formatVND(unitPrice)}/ngày`;
+            document.getElementById('sum-days').textContent = `${days} ngày`;
+            document.getElementById('sum-addons').textContent = formatVND(totalAddons);
+            document.getElementById('sum-discount').textContent = `-${formatVND(discountAmount)}`;
+            document.getElementById('sum-total').textContent = formatVND(finalTotal);
+            document.getElementById('sum-pay-note').textContent = payRatio === 1 ? 'Thanh toán 100% hợp đồng' : 'Đặt cọc giữ xe 30%';
+            document.getElementById('sum-pay-now').textContent = formatVND(payNowAmount);
+
+            const phoneVal = document.getElementById('chk-phone').value || 'KHACH';
+            document.getElementById('qr-transfer-note').textContent = `VCAR XE${car.id} ${phoneVal.slice(-4)}`;
+        }
+
+        function applyPromoCode() {
+            const code = (document.getElementById('chk-promo-input').value || '').trim().toUpperCase();
+            const msgEl = document.getElementById('chk-promo-msg');
+            msgEl.classList.remove('hidden');
+
+            if (code === 'THUEXE10') {
+                appliedPromoDiscountRate = 0.10;
+                msgEl.className = "text-[11px] mt-1 font-bold text-emerald-600";
+                msgEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>Đã áp dụng mã THUEXE10: Giảm 10% tổng hóa đơn!`;
+                showToast('Áp dụng mã giảm giá THUEXE10 (-10%) thành công!', 'success');
+            } else if (code === 'VIP20') {
+                appliedPromoDiscountRate = 0.20;
+                msgEl.className = "text-[11px] mt-1 font-bold text-emerald-600";
+                msgEl.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i>Đã áp dụng mã VIP20: Giảm 20% tổng hóa đơn!`;
+                showToast('Áp dụng mã giảm giá VIP20 (-20%) thành công!', 'success');
+            } else {
+                appliedPromoDiscountRate = 0;
+                msgEl.className = "text-[11px] mt-1 font-bold text-rose-600";
+                msgEl.innerHTML = `<i class="fa-solid fa-circle-exclamation mr-1"></i>Mã không hợp lệ. Vui lòng thử mã THUEXE10.`;
+            }
+            recalculateCheckout();
+        }
+
+        function selectPaymentMethod(method) {
+            selectedPaymentMethod = method;
+            ['vietqr', 'momo', 'cash'].forEach(m => {
+                const btn = document.getElementById('pay-btn-' + m);
+                if (m === method) {
+                    btn.className = "pay-method-btn border-2 border-blue-600 bg-blue-50 p-3 rounded-xl text-left transition";
+                } else {
+                    btn.className = "pay-method-btn border-2 border-slate-200 bg-white p-3 rounded-xl text-left transition";
+                }
+            });
+
+            const qrBox = document.getElementById('vietqr-preview-box');
+            if (method === 'cash') {
+                qrBox.classList.add('hidden');
+            } else {
+                qrBox.classList.remove('hidden');
+            }
+        }
+
+        function fillDemoCustomerData() {
+            document.getElementById('chk-fullname').value = currentUser ? currentUser.name : "Nguyễn Minh Tuấn";
+            document.getElementById('chk-phone').value = "0909888668";
+            document.getElementById('chk-cccd').value = "079095008899";
+            document.getElementById('chk-gplx').value = "790198004521";
+            document.getElementById('chk-address').value = "128 Nguyễn Thị Thập, Quận 7, TP.HCM";
+            recalculateCheckout();
+            showToast('Đã điền nhanh thông tin khách hàng mẫu!', 'info');
+        }
+
+        function submitBookingOrder() {
+            const fullname = document.getElementById('chk-fullname').value.trim();
+            const phone = document.getElementById('chk-phone').value.trim();
+            const cccd = document.getElementById('chk-cccd').value.trim();
+            const agreed = document.getElementById('chk-agree-policy').checked;
+
+            if (!fullname || !phone || !cccd) {
+                showToast('Vui lòng nhập đầy đủ Họ tên, Số điện thoại và Số CCCD (hoặc bấm nút Điền nhanh dữ liệu mẫu)!', 'error');
+                document.getElementById('chk-fullname').focus();
+                return;
+            }
+            if (!agreed) {
+                showToast('Vui lòng tích đồng ý với chính sách thuê xe trước khi xác nhận!', 'error');
+                return;
+            }
+
+            const car = CARS_DATA.find(c => c.id === selectedCarId) || CARS_DATA[0];
+            const orderCode = 'VCAR-' + Math.floor(100000 + Math.random() * 900000);
+            const totalText = document.getElementById('sum-total').textContent;
+            const payNowText = document.getElementById('sum-pay-now').textContent;
+            const daysText = document.getElementById('sum-days').textContent;
+            const modeText = selectedRentalMode === 'self' ? 'Thuê Tự Lái' : 'Có Tài Xế';
+
+            const newBooking = {
+                code: orderCode,
+                carName: car.name,
+                customer: fullname,
+                phone: phone,
+                days: daysText,
+                mode: modeText,
+                total: totalText,
+                paidNow: payNowText
+            };
+            bookingsHistory.unshift(newBooking);
+            document.getElementById('header-booking-count').textContent = bookingsHistory.length;
+            renderRecentBookings();
+
+            // Hiển thị Biên nhận & Hợp đồng đặt xe thành công
+            const modalBody = document.getElementById('contract-modal-body');
+            document.getElementById('contract-modal-title').innerHTML = `<i class="fa-solid fa-circle-check"></i> ĐẶT XE THÀNH CÔNG — MÃ ĐƠN: ${orderCode}`;
+            modalBody.innerHTML = `
+                <div class="bg-emerald-50 border-2 border-emerald-500 rounded-xl p-4 text-center">
+                    <div class="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center text-2xl mx-auto mb-2">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <h4 class="text-lg font-extrabold text-emerald-950">Cảm ơn ${fullname}! Đơn đặt xe đã được ghi nhận</h4>
+                    <p class="text-xs text-emerald-800 mt-1">Mã hợp đồng điện tử: <strong class="font-mono text-sm">${orderCode}</strong></p>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl p-4 space-y-2 text-xs sm:text-sm bg-slate-50">
+                    <div class="flex justify-between"><span>Khách hàng:</span><strong>${fullname} (${phone})</strong></div>
+                    <div class="flex justify-between"><span>Số CCCD:</span><strong>${cccd}</strong></div>
+                    <div class="flex justify-between"><span>Xe đặt thuê:</span><strong class="text-blue-700">${car.name} (${car.plate})</strong></div>
+                    <div class="flex justify-between"><span>Hình thức & Thời gian:</span><strong>${modeText} • ${daysText}</strong></div>
+                    <div class="flex justify-between"><span>Bảo hiểm thân vỏ 2 chiều:</span><strong class="text-emerald-700">Đã kích hoạt (${car.kmLimit}km/ngày)</strong></div>
+                    <div class="flex justify-between border-t border-slate-200 pt-2"><span>Tổng giá trị hợp đồng:</span><strong class="text-base text-slate-900">${totalText}</strong></div>
+                    <div class="flex justify-between"><span>Số tiền thanh toán/đặt cọc:</span><strong class="text-base text-rose-600">${payNowText}</strong></div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button onclick="closeContractModal(); navigateTo('home');" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold px-4 py-2.5 rounded-lg text-xs">Về Trang Chủ</button>
+                    <button onclick="closeContractModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-lg text-xs">Hoàn tất</button>
+                </div>
+            `;
+            document.getElementById('contract-modal').classList.remove('hidden');
+            showToast(`Đặt xe ${car.name} thành công! Mã đơn: ${orderCode}`, 'success');
+        }
+
+        function renderRecentBookings() {
+            const listEl = document.getElementById('recent-bookings-list');
+            if (bookingsHistory.length === 0) return;
+            listEl.innerHTML = bookingsHistory.map(b => `
+                <div class="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                    <div>
+                        <strong class="text-emerald-950 block">${b.code} — ${b.carName}</strong>
+                        <span class="text-[11px] text-emerald-700">${b.mode} • ${b.days} • Cọc: ${b.paidNow}</span>
+                    </div>
+                    <span class="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">Đã giữ xe</span>
+                </div>
+            `).join('');
+        }
+
+        // Xem hợp đồng mẫu từ trang Chi tiết xe
+        function openContractModal() {
+            const car = CARS_DATA.find(c => c.id === selectedCarId) || CARS_DATA[0];
+            document.getElementById('contract-modal-title').innerHTML = `<i class="fa-solid fa-file-contract"></i> HỢP ĐỒNG THUÊ XE MẪU — ${car.name.toUpperCase()}`;
+            document.getElementById('contract-modal-body').innerHTML = `
+                <div class="text-center border-b border-slate-200 pb-3">
+                    <h4 class="font-extrabold text-slate-900">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h4>
+                    <p class="text-xs text-slate-500">Độc lập - Tự do - Hạnh phúc</p>
+                    <h3 class="text-base font-black text-blue-700 mt-2">HỢP ĐỒNG CHO THUÊ XE Ô TÔ</h3>
+                </div>
+                <div class="space-y-2 text-xs leading-relaxed text-slate-700">
+                    <p><strong>BÊN CHO THUÊ (BÊN A):</strong> CÔNG TY TNHH VCAR RENTAL VIỆT NAM — Hotline: 1900 8866</p>
+                    <p><strong>PHƯƠNG TIỆN BÀN GIAO:</strong> ${car.name} — Biển kiểm soát: <strong>${car.plate}</strong> — Nhiên liệu: ${car.fuel}.</p>
+                    <p><strong>ĐIỀU 1 - GIÁ THUÊ & BẢO HIỂM:</strong> Giá tự lái ${formatVND(car.priceSelf)}/ngày; Giá có tài xế ${formatVND(car.priceDriver)}/ngày. Xe đã bao gồm Bảo hiểm vật chất thân vỏ 2 chiều.</p>
+                    <p><strong>ĐIỀU 2 - GIỚI HẠN SỐ KM & PHỤ THU:</strong> Giới hạn tối đa <strong>${car.kmLimit} km/ngày</strong>. Phụ thu quá số km giới hạn: <strong>${car.overKmFee}</strong>. Phụ thu trả xe trễ giờ: <strong>${car.lateHourFee}</strong> (quá 5 giờ tính 1 ngày).</p>
+                    <p><strong>ĐIỀU 3 - TRÁCH NHIỆM BÊN THUÊ:</strong> Xuất trình CCCD gắn chip và GPLX hợp lệ, tuân thủ Luật Giao thông đường bộ.</p>
+                </div>
+                <div class="text-right pt-3 border-t border-slate-200">
+                    <button onclick="closeContractModal(); proceedToCheckoutFromDetail();" class="bg-blue-600 text-white font-bold px-5 py-2 rounded-lg text-xs">Đồng ý & Đi đến Thanh toán</button>
+                </div>
+            `;
+            document.getElementById('contract-modal').classList.remove('hidden');
+        }
+
+        function closeContractModal() {
+            document.getElementById('contract-modal').classList.add('hidden');
+        }
+
+        // =================================================================
+        // 8. MODAL LOGIN / ĐĂNG KÝ & LIÊN HỆ
+        // =================================================================
+        function openLoginModal() {
+            document.getElementById('login-modal').classList.remove('hidden');
+        }
+        function closeLoginModal() {
+            document.getElementById('login-modal').classList.add('hidden');
+        }
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('form-login');
+            const regForm = document.getElementById('form-register');
+            const tabLogin = document.getElementById('auth-tab-login');
+            const tabReg = document.getElementById('auth-tab-register');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                regForm.classList.add('hidden');
+                tabLogin.className = "py-3 font-extrabold text-xs sm:text-sm uppercase border-b-2 border-blue-600 bg-white text-blue-600";
+                tabReg.className = "py-3 font-extrabold text-xs sm:text-sm uppercase text-slate-500 hover:text-slate-800";
+            } else {
+                regForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+                tabReg.className = "py-3 font-extrabold text-xs sm:text-sm uppercase border-b-2 border-emerald-600 bg-white text-emerald-600";
+                tabLogin.className = "py-3 font-extrabold text-xs sm:text-sm uppercase text-slate-500 hover:text-slate-800";
+            }
+        }
+
+        function handleLoginSubmit(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const displayName = username.includes('@') ? username.split('@')[0].toUpperCase() : username;
+            currentUser = { name: displayName };
+            document.getElementById('header-user-label').textContent = displayName;
+            closeLoginModal();
+            showToast(`Xin chào ${displayName}! Bạn đã đăng nhập thành công.`, 'success');
+        }
+
+        function handleRegisterSubmit(e) {
+            e.preventDefault();
+            const fullname = document.getElementById('reg-fullname').value.trim();
+            currentUser = { name: fullname };
+            document.getElementById('header-user-label').textContent = fullname;
+            closeLoginModal();
+            showToast(`Chào mừng thành viên mới ${fullname}! Tặng bạn mã THUEXE10 giảm 10%.`, 'success');
+        }
+
+        function handleContactSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('contact-name').value;
+            const topic = document.getElementById('contact-topic').value;
+            e.target.reset();
+            showToast(`Cảm ơn ${name}! Yêu cầu "${topic}" đã được gửi, tổng đài sẽ gọi lại trong 5 phút.`, 'success');
+        }
+
+        // Hướng dẫn thư mục asset/image
+        function openAssetGuideModal() {
+            document.getElementById('asset-guide-modal').classList.remove('hidden');
+        }
+        function closeAssetGuideModal() {
+            document.getElementById('asset-guide-modal').classList.add('hidden');
+        }
+
+        // Chế độ bật/tắt viền đậm giống hệt bản vẽ Wireframe
+        function toggleWireframeMode() {
+            document.body.classList.toggle('wireframe-mode');
+            const isWf = document.body.classList.contains('wireframe-mode');
+            const btn = document.getElementById('wf-toggle-btn');
+            btn.innerHTML = `<i class="fa-solid fa-border-all text-amber-400"></i><span>Viền Bản Vẽ: ${isWf ? 'Bật' : 'Tắt'}</span>`;
+            showToast(isWf ? 'Đã bật chế độ hiển thị khung viền đậm theo bản vẽ thiết kế!' : 'Đã chuyển về chế độ giao diện hiện đại!', 'info');
+        }
+
+        // Hàm hiển thị thông báo Toast thay thế hoàn toàn alert()
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const colors = {
+                success: 'bg-emerald-700 border-emerald-500 text-white',
+                error: 'bg-rose-700 border-rose-500 text-white',
+                info: 'bg-slate-900 border-blue-500 text-white'
+            };
+            const icons = {
+                success: 'fa-circle-check text-emerald-300',
+                error: 'fa-triangle-exclamation text-rose-300',
+                info: 'fa-bell text-amber-400'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border-l-4 shadow-xl text-xs sm:text-sm font-bold max-w-md transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icons[type] || icons.info} text-base"></i>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Khởi tạo ngày mặc định và render toàn bộ dữ liệu khi tải trang
+        window.onload = function () {
+            const today = new Date();
+            const twoDaysLater = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000);
+            const fmtDate = d => d.toISOString().split('T')[0];
+
+            document.getElementById('detail-pickup-date').value = fmtDate(today);
+            document.getElementById('detail-return-date').value = fmtDate(twoDaysLater);
+            document.getElementById('chk-pickup-date').value = fmtDate(today);
+            document.getElementById('chk-return-date').value = fmtDate(twoDaysLater);
+
+            renderHomeFeaturedCars();
+            renderCarListPage();
+            populateCheckoutCarDropdown();
+            openCarDetail(1);
+            navigateTo('home');
+        };
+    </script>
+</body>
+</html>
